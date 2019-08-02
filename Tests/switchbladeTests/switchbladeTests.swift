@@ -26,6 +26,9 @@ final class switchbladeTests: XCTestCase {
     func testSQLiteQueryActions() {
         testQueryActionsAsync(initSQLiteDatabase())
     }
+    func testSQLiteCRUD() {
+        testCRUDAsync(initSQLiteDatabase())
+    }
     
     // Cassandra
     func testCassandraPersist() {
@@ -49,6 +52,9 @@ final class switchbladeTests: XCTestCase {
     func testCassandraQueryActions() {
         testQueryActionsAsync(initCassandraDatabase())
     }
+    func testCassandraCRUD() {
+        testCRUDAsync(initCassandraDatabase())
+    }
     
     static var allTests = [
         ("testSQLitePersist",testSQLitePersist),
@@ -63,6 +69,8 @@ final class switchbladeTests: XCTestCase {
         ("testCassandraPersistAsync",testCassandraPersistAsync),
         ("testSQLitePersistAsync",testSQLitePersistAsync),
         ("testCassandraQueryActions",testCassandraQueryActions),
-        ("testSQLiteQueryActions",testSQLiteQueryActions)
+        ("testSQLiteQueryActions",testSQLiteQueryActions),
+        ("testSQLiteCRUD",testSQLiteCRUD),
+        ("testCassandraCRUD",testCassandraCRUD)
     ]
 }

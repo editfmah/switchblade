@@ -18,7 +18,6 @@ import Dispatch
 public class CassandraProvider: DataProvider {
     
     var db: Kassandra!
-    var memSqliteProvider = try! Switchblade(provider: SQLiteProvider(path: ":memory:"))
     var ks: String
     var opened: Bool = false
     public var structure: [String:[String:DataType]] = [:]
@@ -26,7 +25,6 @@ public class CassandraProvider: DataProvider {
     public var pks: [String:String] = [:]
     public var idxs: [String:[String]] = [:]
     public var table_alias: [String:String] = [:]
-    
     public init(keyspace: String, host: String, port: Int32) {
         
         db = Kassandra(host: host, port: port)
@@ -152,9 +150,6 @@ public class CassandraProvider: DataProvider {
     
     public func create<T>(_ object: T, pk: String, auto: Bool, indexes: [String]) throws where T: Codable {
         
-        // create in the memory database too
-        try? memSqliteProvider.create(object, pk: pk, auto: auto, indexes: indexes)
-        
         let mirror = Mirror(reflecting: object)
         var name = "\("\(mirror)".split(separator: " ").last!)"
         if table_alias[name] != nil {
@@ -169,7 +164,7 @@ public class CassandraProvider: DataProvider {
                     let propMirror = Mirror(reflecting: c.value)
                     if propMirror.subjectType == String?.self {
                         _ = try self.executeSync(sql: "CREATE COLUMNFAMILY IF NOT EXISTS \(ks).\(name) (\(pk) text, PRIMARY KEY(\(pk)));", params: [], silenceErrors: true)
-                    } else if propMirror.subjectType == UUID?.self {
+                    } else if (propMirror.subjectType == UUID?.self || propMirror.subjectType == UUID.self){
                         _ = try self.executeSync(sql: "CREATE COLUMNFAMILY IF NOT EXISTS \(ks).\(name) (\(pk) uuid, PRIMARY KEY(\(pk)));", params: [], silenceErrors: true)
                     } else if propMirror.subjectType == Int?.self {
                         _ = try self.executeSync(sql: "CREATE COLUMNFAMILY IF NOT EXISTS \(ks).\(name) (\(pk) bigint, PRIMARY KEY(\(pk)));", params: [], silenceErrors: true)
@@ -192,20 +187,20 @@ public class CassandraProvider: DataProvider {
                 
                 let propMirror = Mirror(reflecting: c.value)
                 if propMirror.subjectType == String?.self {
-                    _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) text);", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .String
+                    _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) text);", params: [], silenceErrors:true)
                 } else if propMirror.subjectType == Int?.self || propMirror.subjectType == UInt64?.self || propMirror.subjectType == UInt?.self || propMirror.subjectType == Int64?.self {
-                    _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) bigint)", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .Int
+                    _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) bigint)", params: [], silenceErrors:true)
                 } else if propMirror.subjectType == Double?.self {
-                    _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) double)", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .Double
+                    _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) double)", params: [], silenceErrors:true)
                 } else if propMirror.subjectType == Data?.self {
-                    _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) blob)", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .Blob
+                    _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) blob)", params: [], silenceErrors:true)
                 } else if propMirror.subjectType == UUID?.self {
-                    _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) uuid)", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .UUID
+                    _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) uuid)", params: [], silenceErrors:true)
                 }
             }
             
@@ -255,11 +250,20 @@ public class CassandraProvider: DataProvider {
     
     public func query<T>(_ object: T, parameters: [param], completion: (([T], DatabaseError?) -> Void)?) where T : Decodable, T : Encodable {
         
+        
         let mirror = Mirror(reflecting: object)
         var name = "\("\(mirror)".split(separator: " ").last!)"
         if table_alias[name] != nil {
             name = table_alias[name]!
         }
+        
+        let memSqliteProvider = Switchblade(provider: SQLiteProvider(path: ":memory:")) { (success, provider, error) in
+            var prov = provider
+            prov.table_alias = self.table_alias
+        }
+        // now create the table
+        _ = try? memSqliteProvider.create(object, pk: pks[name]!, auto: false, indexes: [])
+        
         var params: [Any?] = []
         
         // build the conditionals
@@ -387,14 +391,12 @@ public class CassandraProvider: DataProvider {
                 }
                 
                 // now we have the results, jam this into a memory SQLITE database to get all the sorting, filtering & limiting sorted out
-                _ = try? (self.memSqliteProvider.provider as! SQLiteProvider).execute(sql: "DELETE FROM \(name);", params: [])
                 for r in results {
-                    _ = try? self.memSqliteProvider.put(r)
+                    _ = try? memSqliteProvider.put(r)
                 }
                 
-                self.memSqliteProvider.query(object, parameters, completion: { (tObjects, error) in
+                memSqliteProvider.query(object, parameters, completion: { (tObjects, error) in
                     completion?(tObjects,error)
-                    _ = try? (self.memSqliteProvider.provider as! SQLiteProvider).execute(sql: "DELETE FROM \(name);", params: [])
                 })
 
             }
@@ -424,7 +426,7 @@ public class CassandraProvider: DataProvider {
         let pk = pks[n]!
         var pkValue: Any?
         
-        let types: [Any.Type] = [String?.self, String.self,Int?.self,Int.self,UInt64?.self,UInt64.self,UInt?.self,UInt.self,Int64?.self,Int64.self,Double?.self,Double.self,Data?.self,Data.self]
+        let types: [Any.Type] = [String?.self, String.self,Int?.self,Int.self,UInt64?.self,UInt64.self,UInt?.self,UInt.self,Int64?.self,Int64.self,Double?.self,Double.self,Data?.self,Data.self,UUID.self,UUID?.self]
         
         // find the pk, examine the type and create the table
         for c in mirror.children {
