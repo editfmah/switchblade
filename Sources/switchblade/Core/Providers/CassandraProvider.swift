@@ -25,8 +25,9 @@ public class CassandraProvider: DataProvider {
     public var conversion: [String:[String:String]] = [:]
     public var pks: [String:String] = [:]
     public var idxs: [String:[String]] = [:]
+    public var table_alias: [String:String] = [:]
     
-    public init(keyspace: String, host: String, port: Int32) throws {
+    public init(keyspace: String, host: String, port: Int32) {
         
         db = Kassandra(host: host, port: port)
         ks = keyspace
@@ -106,7 +107,7 @@ public class CassandraProvider: DataProvider {
         let statement = bindParametersIntoStatement(sql, params: values)
         db.execute(statement) { (result) in
             if result.success == false {
-                completion?(false, DatabaseError.Execute(.SyntaxError("\(result)")))
+                completion?(false, DatabaseError.Execute(.SyntaxError("\(result)\nFrom CQL\n\(statement)")))
             } else {
                 completion?(true, nil)
             }
@@ -155,7 +156,10 @@ public class CassandraProvider: DataProvider {
         try? memSqliteProvider.create(object, pk: pk, auto: auto, indexes: indexes)
         
         let mirror = Mirror(reflecting: object)
-        let name = "\(mirror)".split(separator: " ").last!
+        var name = "\("\(mirror)".split(separator: " ").last!)"
+        if table_alias[name] != nil {
+            name = table_alias[name]!
+        }
         
         // find the pk, examine the type and create the table
         for c in mirror.children {
@@ -171,10 +175,10 @@ public class CassandraProvider: DataProvider {
                         _ = try self.executeSync(sql: "CREATE COLUMNFAMILY IF NOT EXISTS \(ks).\(name) (\(pk) bigint, PRIMARY KEY(\(pk)));", params: [], silenceErrors: true)
                     }
                     
-                    pks["\(name)"] = pk
-                    structure["\(name)"] = [:]
-                    conversion["\(name)"] = [:]
-                    idxs["\(name)"] = [pk.lowercased()]
+                    pks[name] = pk
+                    structure[name] = [:]
+                    conversion[name] = [:]
+                    idxs[name] = [pk.lowercased()]
                     
                 }
             }
@@ -184,31 +188,31 @@ public class CassandraProvider: DataProvider {
             
             if c.label != nil {
                 
-                conversion["\(name)"]!["\(c.label!.lowercased())"] = c.label!
+                conversion[name]!["\(c.label!.lowercased())"] = c.label!
                 
                 let propMirror = Mirror(reflecting: c.value)
                 if propMirror.subjectType == String?.self {
                     _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) text);", params: [], silenceErrors:true)
-                    structure["\(name)"]!["\(c.label!)"] = .String
+                    structure[name]!["\(c.label!)"] = .String
                 } else if propMirror.subjectType == Int?.self || propMirror.subjectType == UInt64?.self || propMirror.subjectType == UInt?.self || propMirror.subjectType == Int64?.self {
                     _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) bigint)", params: [], silenceErrors:true)
-                    structure["\(name)"]!["\(c.label!)"] = .Int
+                    structure[name]!["\(c.label!)"] = .Int
                 } else if propMirror.subjectType == Double?.self {
                     _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) double)", params: [], silenceErrors:true)
-                    structure["\(name)"]!["\(c.label!)"] = .Double
+                    structure[name]!["\(c.label!)"] = .Double
                 } else if propMirror.subjectType == Data?.self {
                     _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) blob)", params: [], silenceErrors:true)
-                    structure["\(name)"]!["\(c.label!)"] = .Blob
+                    structure[name]!["\(c.label!)"] = .Blob
                 } else if propMirror.subjectType == UUID?.self {
                     _ = try self.executeSync(sql: "ALTER TABLE \(ks).\(name) ADD (\(c.label!) uuid)", params: [], silenceErrors:true)
-                    structure["\(name)"]!["\(c.label!)"] = .UUID
+                    structure[name]!["\(c.label!)"] = .UUID
                 }
             }
             
         }
         
         for i in indexes {
-            idxs["\(name)"]?.append(i.lowercased())
+            idxs[name]?.append(i.lowercased())
             _ = try self.executeSync(sql: "CREATE INDEX IF NOT EXISTS idx_\(name)_\(i.replacingOccurrences(of: ",", with: "_")) ON \(ks).\(name) (\(i));", params: [], silenceErrors:true)
         }
         
@@ -217,7 +221,10 @@ public class CassandraProvider: DataProvider {
     public func put<T>(_ object: T, completion: ((Bool, DatabaseError?) -> Void)?) where T : Decodable, T : Encodable {
         
         let mirror = Mirror(reflecting: object)
-        let name = "\(mirror)".split(separator: " ").last!
+        var name = "\("\(mirror)".split(separator: " ").last!)"
+        if table_alias[name] != nil {
+            name = table_alias[name]!
+        }
         
         var placeholders: [String] = []
         var columns: [String] = []
@@ -249,7 +256,10 @@ public class CassandraProvider: DataProvider {
     public func query<T>(_ object: T, parameters: [param], completion: (([T], DatabaseError?) -> Void)?) where T : Decodable, T : Encodable {
         
         let mirror = Mirror(reflecting: object)
-        let name = "\(mirror)".split(separator: " ").last!
+        var name = "\("\(mirror)".split(separator: " ").last!)"
+        if table_alias[name] != nil {
+            name = table_alias[name]!
+        }
         var params: [Any?] = []
         
         // build the conditionals
@@ -279,7 +289,7 @@ public class CassandraProvider: DataProvider {
                     switch op {
                     case .equals:
                         //debugPrint("query constructed: looking for column '\(column.lowercased())'")
-                        if idxs["\(name)"]!.contains(column.lowercased()) {
+                        if idxs[name]!.contains(column.lowercased()) {
                             //debugPrint("query constructed: found where clause which is indexed")
                             if wheres.count == 0 {
                                 //debugPrint("query constructed: adding primary lookup")
@@ -337,7 +347,7 @@ public class CassandraProvider: DataProvider {
                     
                     for k in record.keys {
                         
-                        let kp = self.conversion["\(name)"]![k.lowercased()]!
+                        let kp = self.conversion[name]![k.lowercased()]!
                         
                         switch record[k]!.getType() {
                         case .Null:
@@ -406,8 +416,11 @@ public class CassandraProvider: DataProvider {
     public func delete<T>(_ object: T, completion: ((Bool, DatabaseError?) -> Void)?) where T : Decodable, T : Encodable {
         
         let mirror = Mirror(reflecting: object)
-        let name = "\(mirror)".split(separator: " ").last!
-        let n = "\(name)"
+        var name = "\("\(mirror)".split(separator: " ").last!)"
+        if table_alias[name] != nil {
+            name = table_alias[name]!
+        }
+        let n = name
         let pk = pks[n]!
         var pkValue: Any?
         

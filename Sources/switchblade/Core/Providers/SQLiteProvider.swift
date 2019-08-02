@@ -19,6 +19,8 @@ internal let SQLITE_STATIC = unsafeBitCast(0, to: sqlite3_destructor_type.self)
 internal let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
 public class SQLiteProvider: DataProvider {
+    
+    public var table_alias: [String : String] = [:]
         
     var db: OpaquePointer?
     public var structure: [String:[String:DataType]] = [:]
@@ -76,7 +78,10 @@ public class SQLiteProvider: DataProvider {
     public func create<T>(_ object: T, pk: String, auto: Bool, indexes: [String]) throws where T: Codable {
         
         let mirror = Mirror(reflecting: object)
-        let name = "\(mirror)".split(separator: " ").last!
+        var name = "\("\(mirror)".split(separator: " ").last!)"
+        if table_alias[name] != nil {
+            name = table_alias[name]!
+        }
         
         // find the pk, examine the type and create the table
         for c in mirror.children {
@@ -92,8 +97,8 @@ public class SQLiteProvider: DataProvider {
                         _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS \(name) (\(pk) INTEGER PRIMARY KEY \(auto ? "AUTOINCREMENT" : ""));", params: [])
                     }
                     
-                    pks["\(name)"] = pk
-                    structure["\(name)"] = [:]
+                    pks[name] = pk
+                    structure[name] = [:]
                 }
             }
         }
@@ -104,19 +109,19 @@ public class SQLiteProvider: DataProvider {
                 let propMirror = Mirror(reflecting: c.value)
                 if propMirror.subjectType == String?.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) TEXT", params: [], silenceErrors:true)
-                    structure["\(name)"]!["\(c.label!)"] = .String
+                    structure[name]!["\(c.label!)"] = .String
                 } else if propMirror.subjectType == Int?.self || propMirror.subjectType == UInt64?.self || propMirror.subjectType == UInt?.self || propMirror.subjectType == Int64?.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) INTEGER", params: [], silenceErrors:true)
-                    structure["\(name)"]!["\(c.label!)"] = .Int
+                    structure[name]!["\(c.label!)"] = .Int
                 } else if propMirror.subjectType == Double?.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) REAL", params: [], silenceErrors:true)
-                    structure["\(name)"]!["\(c.label!)"] = .Double
+                    structure[name]!["\(c.label!)"] = .Double
                 } else if propMirror.subjectType == Data?.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) BLOB", params: [], silenceErrors:true)
-                    structure["\(name)"]!["\(c.label!)"] = .Blob
+                    structure[name]!["\(c.label!)"] = .Blob
                 } else if propMirror.subjectType == UUID?.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) TEXT", params: [], silenceErrors:true)
-                    structure["\(name)"]!["\(c.label!)"] = .UUID
+                    structure[name]!["\(c.label!)"] = .UUID
                 }
             }
             
@@ -197,12 +202,15 @@ public class SQLiteProvider: DataProvider {
     public func delete<T>(_ object: T, completion: ((Bool, DatabaseError?) -> Void)?) where T : Decodable, T : Encodable {
         
         let mirror = Mirror(reflecting: object)
-        let name = "\(mirror)".split(separator: " ").last!
-        let n = "\(name)"
+        var name = "\("\(mirror)".split(separator: " ").last!)"
+        if table_alias[name] != nil {
+            name = table_alias[name]!
+        }
+        let n = name
         let pk = pks[n]!
         var pkValue: Any?
         
-        let types: [Any.Type] = [String?.self, String.self,Int?.self,Int.self,UInt64?.self,UInt64.self,UInt?.self,UInt.self,Int64?.self,Int64.self,Double?.self,Double.self,Data?.self,Data.self]
+        let types: [Any.Type] = [String?.self, String.self,Int?.self,Int.self,UInt64?.self,UInt64.self,UInt?.self,UInt.self,Int64?.self,Int64.self,Double?.self,Double.self,Data?.self,Data.self,UUID.self,UUID?.self]
         
         // find the pk, examine the type and create the table
         for c in mirror.children {
@@ -240,7 +248,10 @@ public class SQLiteProvider: DataProvider {
     public func delete<T>(_ object: T, parameters: [param], completion: ((Bool, DatabaseError?) -> Void)?) where T : Decodable, T : Encodable {
         
         let mirror = Mirror(reflecting: object)
-        let name = "\(mirror)".split(separator: " ").last!
+        var name = "\("\(mirror)".split(separator: " ").last!)"
+        if table_alias[name] != nil {
+            name = table_alias[name]!
+        }
         var params: [Any?] = []
         
         // build the conditionals
@@ -352,7 +363,10 @@ public class SQLiteProvider: DataProvider {
     public func put<T>(_ object: T, completion: ((Bool, DatabaseError?) -> Void)?) where T : Decodable, T : Encodable {
         
         let mirror = Mirror(reflecting: object)
-        let name = "\(mirror)".split(separator: " ").last!
+        var name = "\("\(mirror)".split(separator: " ").last!)"
+        if table_alias[name] != nil {
+            name = table_alias[name]!
+        }
         
         var placeholders: [String] = []
         var columns: [String] = []
@@ -389,7 +403,11 @@ public class SQLiteProvider: DataProvider {
     public func query<T>(_ object: T, parameters: [param], completion: (([T], DatabaseError?) -> Void)?) where T : Decodable, T : Encodable {
         
         let mirror = Mirror(reflecting: object)
-        let name = "\(mirror)".split(separator: " ").last!
+        var name = "\("\(mirror)".split(separator: " ").last!)"
+        if table_alias[name] != nil {
+            name = table_alias[name]!
+        }
+        
         var params: [Any?] = []
         
         // build the conditionals

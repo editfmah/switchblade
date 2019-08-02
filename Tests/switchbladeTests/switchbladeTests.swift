@@ -1,15 +1,68 @@
 import XCTest
-@testable import switchblade
+@testable import Switchblade
 
 final class switchbladeTests: XCTestCase {
-    func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
-        XCTAssertEqual(switchblade().text, "Hello, World!")
+    
+    
+    // SQLite
+    func testSQLitePersist() {
+        testPersist(initSQLiteDatabase())
     }
-
+    func testSQLiteQuery() {
+        testQuery(initSQLiteDatabase())
+    }
+    func testSQLiteQueryAsync() {
+        testQueryAsync(initSQLiteDatabase())
+    }
+    func testSQLiteDeleteAsync() {
+        testDeleteAsync(initSQLiteDatabase())
+    }
+    func testSQLiteUpdateAsync() {
+        testUpdateAsync(initSQLiteDatabase())
+    }
+    func testSQLitePersistAsync() {
+        testPersistAsync(initSQLiteDatabase())
+    }
+    func testSQLiteQueryActions() {
+        testQueryActionsAsync(initSQLiteDatabase())
+    }
+    
+    // Cassandra
+    func testCassandraPersist() {
+            testPersist(initCassandraDatabase())
+    }
+    func testCassandraQuery() {
+            testQuery(initCassandraDatabase())
+    }
+    func testCassandraQueryAsync() {
+            testQueryAsync(initCassandraDatabase())
+    }
+    func testCassandraDeleteAsync() {
+            testDeleteAsync(initCassandraDatabase())
+    }
+    func testCassandraUpdateAsync() {
+            testUpdateAsync(initCassandraDatabase())
+    }
+    func testCassandraPersistAsync() {
+        testPersistAsync(initCassandraDatabase())
+    }
+    func testCassandraQueryActions() {
+        testQueryActionsAsync(initCassandraDatabase())
+    }
+    
     static var allTests = [
-        ("testExample", testExample),
+        ("testSQLitePersist",testSQLitePersist),
+        ("testSQLiteQuery",testSQLiteQuery),
+        ("testSQLiteQueryAsync",testSQLiteQueryAsync),
+        ("testSQLiteUpdateAsync",testSQLiteUpdateAsync),
+        ("testCassandraPersist",testCassandraPersist),
+        ("testCassandraQuery",testCassandraQuery),
+        ("testCassandraQueryAsync",testCassandraQueryAsync),
+        ("testCassandraDeleteAsync",testCassandraDeleteAsync),
+        ("testCassandraUpdateAsync",testCassandraUpdateAsync),
+        ("testCassandraPersistAsync",testCassandraPersistAsync),
+        ("testSQLitePersistAsync",testSQLitePersistAsync),
+        ("testCassandraQueryActions",testCassandraQueryActions),
+        ("testSQLiteQueryActions",testSQLiteQueryActions)
     ]
 }

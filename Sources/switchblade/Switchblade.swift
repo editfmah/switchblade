@@ -19,7 +19,7 @@ public class Switchblade {
         
     }
     
-    public init(provider: DataProvider, completion:((_ success: Bool, _ error: DatabaseError?) -> Void)?) {
+    public init(provider: DataProvider, completion:((_ success: Bool,_ provider: DataProvider, _ error: DatabaseError?) -> Void)?) {
         
         self.provider = provider
         if Switchblade.defaultProvider == nil {
@@ -29,11 +29,11 @@ public class Switchblade {
         // now, open the connection
         do {
             try self.provider.open()
-            completion?(true, nil)
+            completion?(true, provider, nil)
         } catch DatabaseError.Init(let e) {
-            completion?(false, DatabaseError.Init(e))
+            completion?(false, provider, DatabaseError.Init(e))
         } catch {
-            completion?(false, DatabaseError.Unknown)
+            completion?(false, provider, DatabaseError.Unknown)
         }
         
     }

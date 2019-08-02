@@ -47,6 +47,7 @@ public enum param: Equatable {
 
 public protocol DataProvider {
     
+    var table_alias: [String:String] { get set }
     func open() throws
     func close() throws
     func create<T>(_ object: T, pk: String, auto: Bool, indexes: [String]) throws where T: Codable
