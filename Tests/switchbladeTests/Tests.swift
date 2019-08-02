@@ -29,7 +29,7 @@ func initCassandraDatabase() -> Switchblade {
     
     let id = "\(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(8))"
 
-    let db = Switchblade(provider:  CassandraProvider(keyspace: "unit_tests", host: "159.65.51.109", port: 9042)) { (success, provider, error) in
+    let db = Switchblade(provider:  CassandraProvider(keyspace: "unit_tests", host: "159.65.51.108", port: 9042)) { (success, provider, error) in
         XCTAssert(error == nil, "failed to initialiase")
         var prov = provider
         prov.table_alias["Person"] = "Person_\(id)"

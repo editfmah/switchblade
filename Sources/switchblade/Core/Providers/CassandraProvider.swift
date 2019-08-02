@@ -150,6 +150,10 @@ public class CassandraProvider: DataProvider {
     
     public func create<T>(_ object: T, pk: String, auto: Bool, indexes: [String]) throws where T: Codable {
         
+        if !opened {
+            throw DatabaseError.Init(.UnableToConnectToServer)
+        }
+        
         let mirror = Mirror(reflecting: object)
         var name = "\("\(mirror)".split(separator: " ").last!)"
         if table_alias[name] != nil {
@@ -215,6 +219,11 @@ public class CassandraProvider: DataProvider {
     
     public func put<T>(_ object: T, completion: ((Bool, DatabaseError?) -> Void)?) where T : Decodable, T : Encodable {
         
+        if !opened {
+            completion?(false, DatabaseError.Init(.UnableToConnectToServer))
+            return
+        }
+        
         let mirror = Mirror(reflecting: object)
         var name = "\("\(mirror)".split(separator: " ").last!)"
         if table_alias[name] != nil {
@@ -250,6 +259,10 @@ public class CassandraProvider: DataProvider {
     
     public func query<T>(_ object: T, parameters: [param], completion: (([T], DatabaseError?) -> Void)?) where T : Decodable, T : Encodable {
         
+        if !opened {
+            completion?([], DatabaseError.Init(.UnableToConnectToServer))
+            return
+        }
         
         let mirror = Mirror(reflecting: object)
         var name = "\("\(mirror)".split(separator: " ").last!)"
@@ -417,6 +430,10 @@ public class CassandraProvider: DataProvider {
     
     public func delete<T>(_ object: T, completion: ((Bool, DatabaseError?) -> Void)?) where T : Decodable, T : Encodable {
         
+        if !opened {
+            return
+        }
+        
         let mirror = Mirror(reflecting: object)
         var name = "\("\(mirror)".split(separator: " ").last!)"
         if table_alias[name] != nil {
@@ -453,6 +470,11 @@ public class CassandraProvider: DataProvider {
 
     
     public func query(sql: String, params:[Any?], completion: ((_ results: Result, _ error: DatabaseError?) -> Void)?) {
+        
+        if !opened {
+            completion?(Result(), DatabaseError.Init(.UnableToConnectToServer))
+            return
+        }
         
         let aggResult = Result()
         
