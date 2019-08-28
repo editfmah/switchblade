@@ -110,7 +110,7 @@ public class SQLiteProvider: DataProvider {
                 if propMirror.subjectType == String?.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) TEXT", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .String
-                } else if propMirror.subjectType == Int?.self || propMirror.subjectType == UInt64?.self || propMirror.subjectType == UInt?.self || propMirror.subjectType == Int64?.self {
+                } else if propMirror.subjectType == Int?.self || propMirror.subjectType == Int.self || propMirror.subjectType == UInt64?.self || propMirror.subjectType == UInt?.self || propMirror.subjectType == Int64?.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) INTEGER", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .Int
                 } else if propMirror.subjectType == Double?.self {
@@ -122,6 +122,9 @@ public class SQLiteProvider: DataProvider {
                 } else if propMirror.subjectType == UUID?.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) TEXT", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .UUID
+                } else {
+                    _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) TEXT", params: [], silenceErrors:true)
+                    structure[name]!["\(c.label!)"] = .String
                 }
             }
             
@@ -377,11 +380,24 @@ public class SQLiteProvider: DataProvider {
         for c in mirror.children {
             if c.label != nil {
                 let propMirror = Mirror(reflecting: c.value)
+                var found = false
                 for t in types {
                     if t == propMirror.subjectType {
-                        
                         placeholders.append("?")
                         params.append(unwrap(c.value))
+                        columns.append(c.label!)
+                        found = true
+                    }
+                }
+                if !found {
+                    // format this into a string
+                    if unwrap(c.value) == nil {
+                        placeholders.append("?")
+                        params.append(unwrap(c.value))
+                        columns.append(c.label!)
+                    } else {
+                        placeholders.append("?")
+                        params.append("\(unwrap(c.value)!)")
                         columns.append(c.label!)
                     }
                 }
