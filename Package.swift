@@ -22,8 +22,5 @@ let package = Package(
         .target(
             name: "Switchblade",
             dependencies: ["Kassandra","CryptoSwift"]),
-        .testTarget(
-            name: "SwitchbladeTests",
-            dependencies: ["Switchblade"]),
     ]
 )
