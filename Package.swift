@@ -22,5 +22,6 @@ let package = Package(
         .target(
             name: "Switchblade",
             dependencies: ["Kassandra","CryptoSwift"]),
+            ssource: "./Sources/switchblade",
     ]
 )
