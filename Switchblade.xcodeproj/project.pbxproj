@@ -132,7 +132,6 @@
 		OBJ_302 /* Package.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_140 /* Package.swift */; };
 		OBJ_308 /* DataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_10 /* DataProvider.swift */; };
 		OBJ_309 /* Errors.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_11 /* Errors.swift */; };
-		OBJ_310 /* CassandraProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_13 /* CassandraProvider.swift */; };
 		OBJ_311 /* SQLiteProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_14 /* SQLiteProvider.swift */; };
 		OBJ_312 /* Types.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_15 /* Types.swift */; };
 		OBJ_313 /* ColumnValueObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_17 /* ColumnValueObject.swift */; };
@@ -284,7 +283,6 @@
 		OBJ_127 /* Select.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Select.swift; sourceTree = "<group>"; };
 		OBJ_128 /* Table.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Table.swift; sourceTree = "<group>"; };
 		OBJ_129 /* Update.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Update.swift; sourceTree = "<group>"; };
-		OBJ_13 /* CassandraProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CassandraProvider.swift; sourceTree = "<group>"; };
 		OBJ_132 /* SSLPointerTricks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSLPointerTricks.swift; sourceTree = "<group>"; };
 		OBJ_133 /* SSLService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSLService.swift; sourceTree = "<group>"; };
 		OBJ_134 /* Package.swift */ = {isa = PBXFileReference; explicitFileType = sourcecode.swift; name = Package.swift; path = /Users/adrian/Documents/projects/switchblade/.build/checkouts/BlueSSLService/Package.swift; sourceTree = "<group>"; };
@@ -465,7 +463,6 @@
 		OBJ_12 /* Providers */ = {
 			isa = PBXGroup;
 			children = (
-				OBJ_13 /* CassandraProvider.swift */,
 				OBJ_14 /* SQLiteProvider.swift */,
 			);
 			path = Providers;
@@ -668,7 +665,7 @@
 			path = BlockMode;
 			sourceTree = "<group>";
 		};
-		OBJ_5 /*  */ = {
+		OBJ_5 = {
 			isa = PBXGroup;
 			children = (
 				OBJ_6 /* Package.swift */,
@@ -679,7 +676,6 @@
 				OBJ_148 /* LICENSE */,
 				OBJ_149 /* README.md */,
 			);
-			name = "";
 			sourceTree = "<group>";
 		};
 		OBJ_65 /* Foundation */ = {
@@ -939,7 +935,7 @@
 				English,
 				en,
 			);
-			mainGroup = OBJ_5 /*  */;
+			mainGroup = OBJ_5;
 			productRefGroup = OBJ_141 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -1126,7 +1122,6 @@
 			files = (
 				OBJ_308 /* DataProvider.swift in Sources */,
 				OBJ_309 /* Errors.swift in Sources */,
-				OBJ_310 /* CassandraProvider.swift in Sources */,
 				OBJ_311 /* SQLiteProvider.swift in Sources */,
 				OBJ_312 /* Types.swift in Sources */,
 				OBJ_313 /* ColumnValueObject.swift in Sources */,

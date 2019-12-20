@@ -13,7 +13,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/VeldsparCrypto/CSQlite.git",      .exact("1.0.8")),
-        .package(url: "https://github.com/YouClap/Kassandra.git",             from:"1.1.0"),
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git",   .exact("0.15.0")),
     ],
     targets: [
@@ -21,7 +20,7 @@ let package = Package(
         // Targets can depend on other targets in this package, and on products in packages which this package depends on.
         .target(
             name: "Switchblade",
-            dependencies: ["Kassandra","CryptoSwift"],
+            dependencies: ["CryptoSwift"],
             path: "./Sources/switchblade"),
     ]
 )
