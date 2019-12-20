@@ -21,7 +21,7 @@ internal let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.se
 public class SQLiteProvider: DataProvider {
     
     public var table_alias: [String : String] = [:]
-        
+    
     var db: OpaquePointer?
     public var structure: [String:[String:DataType]] = [:]
     public var pks: [String:String] = [:]
@@ -64,7 +64,6 @@ public class SQLiteProvider: DataProvider {
             
         } else {
             // error in statement
-            debugPrint("\(String(cString: sqlite3_errmsg(db)))")
             if !silenceErrors {
                 throw DatabaseError.Execute(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
             }
@@ -127,6 +126,10 @@ public class SQLiteProvider: DataProvider {
                 } else if propMirror.subjectType == UUID?.self || propMirror.subjectType == UUID.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) TEXT", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .UUID
+                } else {
+                    // unsupported, could be a custom type.  Gotta go with string.
+                    _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) TEXT", params: [], silenceErrors:true)
+                    structure[name]!["\(c.label!)"] = .String
                 }
             }
             
@@ -615,3 +618,4 @@ public class SQLiteProvider: DataProvider {
     }
     
 }
+
