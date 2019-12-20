@@ -134,7 +134,6 @@
 		OBJ_309 /* Errors.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_11 /* Errors.swift */; };
 		OBJ_311 /* SQLiteProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_14 /* SQLiteProvider.swift */; };
 		OBJ_312 /* Types.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_15 /* Types.swift */; };
-		OBJ_313 /* ColumnValueObject.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_17 /* ColumnValueObject.swift */; };
 		OBJ_314 /* Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_18 /* Result.swift */; };
 		OBJ_315 /* Switchblade.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_19 /* Switchblade.swift */; };
 		OBJ_316 /* ObjectInspection.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_21 /* ObjectInspection.swift */; };
@@ -294,7 +293,6 @@
 		OBJ_148 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		OBJ_149 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		OBJ_15 /* Types.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Types.swift; sourceTree = "<group>"; };
-		OBJ_17 /* ColumnValueObject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColumnValueObject.swift; sourceTree = "<group>"; };
 		OBJ_18 /* Result.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Result.swift; sourceTree = "<group>"; };
 		OBJ_19 /* Switchblade.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Switchblade.swift; sourceTree = "<group>"; };
 		OBJ_21 /* ObjectInspection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjectInspection.swift; sourceTree = "<group>"; };
@@ -523,7 +521,6 @@
 		OBJ_16 /* PersistableObjects */ = {
 			isa = PBXGroup;
 			children = (
-				OBJ_17 /* ColumnValueObject.swift */,
 				OBJ_18 /* Result.swift */,
 			);
 			path = PersistableObjects;
@@ -1124,7 +1121,6 @@
 				OBJ_309 /* Errors.swift in Sources */,
 				OBJ_311 /* SQLiteProvider.swift in Sources */,
 				OBJ_312 /* Types.swift in Sources */,
-				OBJ_313 /* ColumnValueObject.swift in Sources */,
 				OBJ_314 /* Result.swift in Sources */,
 				OBJ_315 /* Switchblade.swift in Sources */,
 				OBJ_316 /* ObjectInspection.swift in Sources */,

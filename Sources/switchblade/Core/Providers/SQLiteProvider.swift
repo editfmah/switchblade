@@ -49,9 +49,9 @@ public class SQLiteProvider: DataProvider {
         
         let result = Result()
         
-        var values: [Value] = []
+        var values: [Any?] = []
         for o in params {
-            values.append(Value(o))
+            values.append(o)
         }
         
         var stmt: OpaquePointer?
@@ -150,11 +150,11 @@ public class SQLiteProvider: DataProvider {
     public func query(sql: String, params:[Any?]) -> Result {
         
         let result = Result()
-        var results: [[String:Value]] = []
+        var results: [[String:Any?]] = []
         
-        var values: [Value] = []
+        var values: [Any?] = []
         for o in params {
-            values.append(Value(o))
+            values.append(o)
         }
         
         var stmt: OpaquePointer?
@@ -168,22 +168,29 @@ public class SQLiteProvider: DataProvider {
                     for i in 0...Int(columns-1) {
                         
                         let columnName = String.init(cString: sqlite3_column_name(stmt, Int32(i)))
-                        var value: Value
+                        let tableName = String.init(cString: sqlite3_column_table_name(stmt, Int32(i)))
+                        var value: Any?
                         
                         switch sqlite3_column_type(stmt, Int32(i)) {
                         case SQLITE_INTEGER:
-                            value = Value(Int(sqlite3_column_int64(stmt, Int32(i))))
+                            value = Int(sqlite3_column_int64(stmt, Int32(i)))
                         case SQLITE_FLOAT:
-                            value = Value(Double(sqlite3_column_double(stmt, Int32(i))))
+                            value = Double(sqlite3_column_double(stmt, Int32(i)))
                         case SQLITE_TEXT:
-                            value = Value(String.init(cString:sqlite3_column_text(stmt, Int32(i))))
+                            value = String.init(cString:sqlite3_column_text(stmt, Int32(i)))
                         case SQLITE_BLOB:
                             let d = Data(bytes: sqlite3_column_blob(stmt, Int32(i)), count: Int(sqlite3_column_bytes(stmt, Int32(i))))
-                            value = Value(d)
+                            value = d
+                            // inspect this to see if it is in fact a uuid
+                            if structure[tableName]![columnName]! == .UUID {
+                                let u = UUID(uuidString: String(bytes: d.bytes, encoding: .utf8)!)!
+                                value = u
+                                
+                            }
                         case SQLITE_NULL:
-                            value = Value(NSNull())
+                            value = nil
                         default:
-                            value = Value(NSNull())
+                            value = nil
                             break;
                         }
                         
@@ -542,32 +549,32 @@ public class SQLiteProvider: DataProvider {
             
             for k in record.keys {
                 
-                switch record[k]!.getType() {
-                case .Null:
+                if let value = record[k]! {
+                    
+                    if let d = value as? Data {
+                        row.append("\"\(k)\" : \"\(d.base64EncodedString())\"")
+                    } else if let d = value as? Double {
+                        row.append("\"\(k)\" : \(d)")
+                    } else if let f = value as? Float {
+                        row.append("\"\(k)\" : \(f)")
+                    } else if let i = value as? Int {
+                        row.append("\"\(k)\" : \(i)")
+                    } else if let s = value as? String {
+                        row.append("\"\(k)\" : \"\(s)\"")
+                    } else if let u = value as? UUID {
+                        row.append("\"\(k)\" : \"\(u.uuidString)\"")
+                    } else {
+                        row.append("\"\(k)\" : \"\(value)\"")
+                    }
+                    
+                } else {
+                    // null
                     row.append("\"\(k)\" : null")
-                    break
-                case .Blob:
-                    row.append("\"\(k)\" : \"\(record[k]!.asData()!.base64EncodedString())\"")
-                    break
-                case .Double:
-                    row.append("\"\(k)\" : \(unwrap(record[k]!.asDouble())!)")
-                    break
-                case .Int:
-                    row.append("\"\(k)\" : \(unwrap(record[k]!.asInt())!)")
-                    break
-                case .String:
-                    row.append("\"\(k)\" : \"\(unwrap(record[k]!.asString())!)\"")
-                    break
-                case .UUID:
-                    row.append("\"\(k)\" : \"\(unwrap(record[k]!.asString())!)\"")
-                    break
-                case .Interpreted:
-                    row.append("\"\(k)\" : \"\(unwrap(record[k]!.asAny())!)\"")
-                    break
                 }
+                
             }
             
-            var jsonString = "{\(row.joined(separator: ","))}"
+            let jsonString = "{\(row.joined(separator: ","))}"
             
             do {
                 let rowObject: T = try decoder.decode(T.self, from: Data(Array(jsonString.utf8)))
@@ -584,7 +591,7 @@ public class SQLiteProvider: DataProvider {
         
     }
     
-    private func bind(stmt: OpaquePointer?, params:[Value]) {
+    private func bind(stmt: OpaquePointer?, params:[Any?]) {
         
         var paramCount = sqlite3_bind_parameter_count(stmt)
         let passedIn = params.count
@@ -597,25 +604,32 @@ public class SQLiteProvider: DataProvider {
         
         for v in params {
             
-            switch v.type {
-            case .String:
-                let s = v.stringValue!
-                sqlite3_bind_text(stmt, paramCount, s,Int32(s.count) , SQLITE_TRANSIENT)
-            case .UUID:
-                let s = v.uuidValue!.uuidString
-                sqlite3_bind_text(stmt, paramCount, s,Int32(s.count) , SQLITE_TRANSIENT)
-            case .Null:
+            if v != nil {
+                
+                if let s = v! as? String {
+                    sqlite3_bind_text(stmt,paramCount,s,Int32(s.count),SQLITE_TRANSIENT)
+                } else if let u = v! as? UUID {
+                    sqlite3_bind_blob(stmt, paramCount, u.asUInt8Array(), Int32(u.asUInt8Array().count), SQLITE_TRANSIENT)
+                } else if let b = v! as? Data {
+                    sqlite3_bind_blob(stmt, paramCount,b.bytes,Int32(b.count), SQLITE_TRANSIENT)
+                } else if let d = v! as? Double {
+                    sqlite3_bind_double(stmt, paramCount, d)
+                } else if let f = v! as? Float {
+                    sqlite3_bind_double(stmt, paramCount, NSNumber(value: f).doubleValue)
+                } else if let i = v! as? Int {
+                    sqlite3_bind_int64(stmt, paramCount, Int64(i))
+                } else if let i = v! as? Int64 {
+                    sqlite3_bind_int64(stmt, paramCount, i)
+                } else {
+                    let s = "\(v!)"
+                    sqlite3_bind_text(stmt, paramCount, s,Int32(s.count) , SQLITE_TRANSIENT)
+                }
+                
+            } else {
                 sqlite3_bind_null(stmt, paramCount)
-            case .Blob:
-                sqlite3_bind_blob(stmt, paramCount, [UInt8](v.blobValue!), Int32(v.blobValue!.count), SQLITE_TRANSIENT)
-            case .Double:
-                sqlite3_bind_double(stmt, paramCount, v.numericValue.doubleValue)
-            case .Int:
-                sqlite3_bind_int64(stmt, paramCount, v.numericValue.int64Value)
-            case .Interpreted:
-                let s = "\(v.asAny()!)"
-                sqlite3_bind_text(stmt, paramCount, s,Int32(s.count) , SQLITE_TRANSIENT)
             }
+            
+            
             
             paramCount += 1
             
@@ -625,4 +639,18 @@ public class SQLiteProvider: DataProvider {
     
 }
 
+extension UUID{
+    public func asUInt8Array() -> [UInt8] {
+        let (u1,u2,u3,u4,u5,u6,u7,u8,u9,u10,u11,u12,u13,u14,u15,u16) = self.uuid
+        return [u1,u2,u3,u4,u5,u6,u7,u8,u9,u10,u11,u12,u13,u14,u15,u16]
+    }
+    public func asData() -> Data {
+        return Data(self.asUInt8Array())
+    }
+}
 
+extension Data {
+    var bytes : [UInt8]{
+        return [UInt8](self)
+    }
+}

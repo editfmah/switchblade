@@ -1,7 +1,7 @@
 
 import Foundation
 
-public typealias Record = [String:Value]
+public typealias Record = [String:Any?]
 
 public enum DataType {
     case String
