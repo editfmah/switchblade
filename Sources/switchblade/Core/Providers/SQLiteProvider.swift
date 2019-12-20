@@ -64,6 +64,7 @@ public class SQLiteProvider: DataProvider {
             
         } else {
             // error in statement
+            debugPrint("\(String(cString: sqlite3_errmsg(db)))")
             if !silenceErrors {
                 throw DatabaseError.Execute(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
             }
