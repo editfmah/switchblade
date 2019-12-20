@@ -129,7 +129,7 @@ public class SQLiteProvider: DataProvider {
                 } else {
                     // unsupported, could be a custom type.  Gotta go with string.
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) TEXT", params: [], silenceErrors:true)
-                    structure[name]!["\(c.label!)"] = .String
+                    structure[name]!["\(c.label!)"] = .Interpreted
                 }
             }
             
@@ -561,6 +561,9 @@ public class SQLiteProvider: DataProvider {
                 case .UUID:
                     row.append("\"\(k)\" : \"\(unwrap(record[k]!.asString())!)\"")
                     break
+                case .Interpreted:
+                    row.append("\"\(k)\" : \"\(unwrap(record[k]!.asAny())!)\"")
+                    break
                 }
             }
             
@@ -609,6 +612,9 @@ public class SQLiteProvider: DataProvider {
                 sqlite3_bind_double(stmt, paramCount, v.numericValue.doubleValue)
             case .Int:
                 sqlite3_bind_int64(stmt, paramCount, v.numericValue.int64Value)
+            case .Interpreted:
+                let s = "\(v.asAny()!)"
+                sqlite3_bind_text(stmt, paramCount, s,Int32(s.count) , SQLITE_TRANSIENT)
             }
             
             paramCount += 1
@@ -618,4 +624,5 @@ public class SQLiteProvider: DataProvider {
     }
     
 }
+
 

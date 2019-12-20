@@ -10,6 +10,7 @@ public enum DataType {
     case Int
     case Double
     case UUID
+    case Interpreted
 }
 
 public enum SWSQLOp {

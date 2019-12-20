@@ -84,6 +84,9 @@ public class CassandraProvider: DataProvider {
                         compiled += "\(p.numericValue.doubleValue)"
                     case .Int:
                         compiled += "\(p.numericValue.int64Value)"
+                    case .Interpreted:
+                        let s = "\(p.asAny()!)"
+                        compiled += "'\(s.replacingOccurrences(of: "'", with: ""))'"
                     }
                 }
             } else {
@@ -384,6 +387,9 @@ public class CassandraProvider: DataProvider {
                             break
                         case .UUID:
                             row.append("\"\(kp)\" : \"\(unwrap(record[k]!.asString())!)\"")
+                            break
+                        case .Interpreted:
+                            row.append("\"\(kp)\" : \"\(unwrap(record[k]!.asAny())!)\"")
                             break
                         }
                     }
