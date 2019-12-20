@@ -75,6 +75,10 @@ public class SQLiteProvider: DataProvider {
         
     }
     
+    let IntTypes: [Any.Type] = [Int?.self,Int.self,UInt64?.self,UInt64.self,UInt?.self,UInt.self,Int64?.self,Int64.self]
+    let UUIDTypes: [Any.Type] = [UUID.self, UUID?.self]
+    let NumberTypes: [Any.Type] = [Double.self, Double?.self, Float?.self]
+    
     public func create<T>(_ object: T, pk: String, auto: Bool, indexes: [String]) throws where T: Codable {
         
         let mirror = Mirror(reflecting: object)
@@ -89,11 +93,11 @@ public class SQLiteProvider: DataProvider {
                 if c.label! == pk {
                     
                     let propMirror = Mirror(reflecting: c.value)
-                    if propMirror.subjectType == String?.self {
+                    if propMirror.subjectType == String?.self || propMirror.subjectType == String.self {
                         _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS \(name) (\(pk) TEXT PRIMARY KEY);", params: [])
-                    } else if propMirror.subjectType == UUID?.self {
+                    } else if propMirror.subjectType == UUID?.self || propMirror.subjectType == UUID.self {
                         _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS \(name) (\(pk) TEXT PRIMARY KEY);", params: [])
-                    } else if propMirror.subjectType == Int?.self {
+                    } else if propMirror.subjectType == Int?.self || propMirror.subjectType == Int.self {
                         _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS \(name) (\(pk) INTEGER PRIMARY KEY \(auto ? "AUTOINCREMENT" : ""));", params: [])
                     }
                     
@@ -107,24 +111,21 @@ public class SQLiteProvider: DataProvider {
             
             if c.label != nil {
                 let propMirror = Mirror(reflecting: c.value)
-                if propMirror.subjectType == String?.self {
+                if propMirror.subjectType == String?.self || propMirror.subjectType == String.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) TEXT", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .String
-                } else if propMirror.subjectType == Int?.self || propMirror.subjectType == Int.self || propMirror.subjectType == UInt64?.self || propMirror.subjectType == UInt?.self || propMirror.subjectType == Int64?.self {
+                } else if propMirror.subjectType == Int?.self || propMirror.subjectType == UInt64?.self || propMirror.subjectType == UInt?.self || propMirror.subjectType == Int64?.self || propMirror.subjectType == Int.self || propMirror.subjectType == UInt64.self || propMirror.subjectType == UInt.self || propMirror.subjectType == Int64.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) INTEGER", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .Int
-                } else if propMirror.subjectType == Double?.self {
+                } else if propMirror.subjectType == Double?.self || propMirror.subjectType == Double.self || propMirror.subjectType == Float?.self || propMirror.subjectType == Float.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) REAL", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .Double
-                } else if propMirror.subjectType == Data?.self {
+                } else if propMirror.subjectType == Data?.self || propMirror.subjectType == Data.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) BLOB", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .Blob
-                } else if propMirror.subjectType == UUID?.self {
+                } else if propMirror.subjectType == UUID?.self || propMirror.subjectType == UUID.self {
                     _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) TEXT", params: [], silenceErrors:true)
                     structure[name]!["\(c.label!)"] = .UUID
-                } else {
-                    _ = try self.execute(sql: "ALTER TABLE \(name) ADD COLUMN \(c.label!) TEXT", params: [], silenceErrors:true)
-                    structure[name]!["\(c.label!)"] = .String
                 }
             }
             
