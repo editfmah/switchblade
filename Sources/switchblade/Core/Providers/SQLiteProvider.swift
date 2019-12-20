@@ -183,9 +183,8 @@ public class SQLiteProvider: DataProvider {
                             value = d
                             // inspect this to see if it is in fact a uuid
                             if structure[tableName]![columnName]! == .UUID {
-                                let u = UUID(uuidString: String(bytes: d.bytes, encoding: .utf8)!)!
+                                let u = UUID(uuid: (d.bytes[0],d.bytes[1],d.bytes[2],d.bytes[3],d.bytes[4],d.bytes[5],d.bytes[6],d.bytes[7],d.bytes[8],d.bytes[9],d.bytes[10],d.bytes[11],d.bytes[12],d.bytes[13],d.bytes[14],d.bytes[15]))
                                 value = u
-                                
                             }
                         case SQLITE_NULL:
                             value = nil
