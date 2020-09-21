@@ -2,30 +2,12 @@
   "object": {
     "pins": [
       {
-        "package": "Socket",
-        "repositoryURL": "https://github.com/IBM-Swift/BlueSocket.git",
-        "state": {
-          "branch": null,
-          "revision": "3cf5de510650d67c551c9e1884fbc9d6e744206b",
-          "version": "1.0.48"
-        }
-      },
-      {
-        "package": "SSLService",
-        "repositoryURL": "https://github.com/IBM-Swift/BlueSSLService.git",
-        "state": {
-          "branch": null,
-          "revision": "e1da62b865ee943f20942571bfebbcb83297e13f",
-          "version": "1.0.48"
-        }
-      },
-      {
         "package": "CryptoSwift",
         "repositoryURL": "https://github.com/krzyzanowskim/CryptoSwift.git",
         "state": {
           "branch": null,
-          "revision": "5da70ba744d58d772201f03600eb16c53197652d",
-          "version": "0.15.0"
+          "revision": "af1b58fc569bfde777462349b9f7314b61762be0",
+          "version": "1.3.2"
         }
       },
       {
@@ -35,15 +17,6 @@
           "branch": null,
           "revision": "c4a24956f063d4f01824f8a9c5123cb5edc4dd34",
           "version": "1.0.8"
-        }
-      },
-      {
-        "package": "Kassandra",
-        "repositoryURL": "https://github.com/YouClap/Kassandra.git",
-        "state": {
-          "branch": null,
-          "revision": "58847d2189b1eaddd61f2b6189151b9fd02f1058",
-          "version": "1.1.0"
         }
       }
     ]

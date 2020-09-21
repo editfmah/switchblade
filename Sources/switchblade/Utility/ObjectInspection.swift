@@ -7,6 +7,16 @@
 
 import Foundation
 
+class Test : Codable, Queryable {
+    
+    public init(){}
+    var sample: String?
+    
+    var queryableItems: [String : Any?] {
+        return ["sample" : self.sample]
+    }
+}
+
 enum ObjectPropertyType {
     
     case Int

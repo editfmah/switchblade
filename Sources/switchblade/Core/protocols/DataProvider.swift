@@ -8,43 +8,6 @@
 import Foundation
 
 
-
-public enum op {
-    case equals
-    case greater
-    case less
-    case isnull
-    case isnotnull
-}
-
-public enum param: Equatable {
-    
-    public static func == (lhs: param, rhs: param) -> Bool {
-        switch (lhs, rhs) {
-        case (.where(_,_,_),.where(_,_,_)):
-            return true
-        case (.limit(_),.limit(_)):
-            return true
-//        case (.or(_),.or(_)):
-//            return true
-        case (.order(_),.order(_)):
-            return true
-        case (.offset(_),.offset(_)):
-            return true
-        default:
-            return false
-        }
-    }
-    
-    case `where`(_ column: String,op,Any?)
-    case limit(Int)
-    case order(String)
-    case offset(Int)
-    // case or([param])
-    
-}
-
-
 public protocol DataProvider {
     
     var table_alias: [String:String] { get set }
