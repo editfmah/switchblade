@@ -29,6 +29,10 @@ extension String : KeyType {
     }
 }
 
-public protocol SWIdentifiable {
+public protocol SwitchbladeIdentifiable {
     var key: KeyType { get }
+}
+
+public protocol SwitchbladeKeyspace {
+    var keyspace: String { get }
 }

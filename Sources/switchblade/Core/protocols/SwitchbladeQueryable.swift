@@ -8,5 +8,5 @@
 import Foundation
 
 protocol Queryable {
-    var queryableItems: [String:Any] { get }
+    var queryableItems: [String:Any?] { get }
 }

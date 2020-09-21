@@ -8,5 +8,8 @@
 import Foundation
 
 public protocol SwitchbadeSetter {
-    @discardableResult func put(key: String, _ object: Codable) -> Bool
+    @discardableResult func put<T:Codable>(_ object: T) -> Bool where T: SwitchbladeIdentifiable
+    @discardableResult func put<T:Codable>(keyspace: String, _ object: T) -> Bool where T: SwitchbladeIdentifiable
+    @discardableResult func put<T:Codable>(key: KeyType, _ object: T) -> Bool
+    @discardableResult func put<T:Codable>(key: KeyType, keyspace: String, _ object: T) -> Bool
 }

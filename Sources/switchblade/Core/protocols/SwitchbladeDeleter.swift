@@ -6,3 +6,10 @@
 //
 
 import Foundation
+
+public protocol SwitchbadeDeleter {
+    @discardableResult func remove<T:SwitchbladeIdentifiable>(_ object: T) -> Bool
+    @discardableResult func remove<T:SwitchbladeIdentifiable>(keyspace: String, _ object: T) -> Bool
+    @discardableResult func remove(key: KeyType) -> Bool
+    @discardableResult func remove(key: KeyType, keyspace: String) -> Bool
+}
