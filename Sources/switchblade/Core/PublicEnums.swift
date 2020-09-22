@@ -23,8 +23,6 @@ public enum param: Equatable {
             return true
         case (.limit(_),.limit(_)):
             return true
-//        case (.or(_),.or(_)):
-//            return true
         case (.order(_),.order(_)):
             return true
         case (.offset(_),.offset(_)):
@@ -38,6 +36,5 @@ public enum param: Equatable {
     case limit(Int)
     case order(String)
     case offset(Int)
-    // case or([param])
     
 }

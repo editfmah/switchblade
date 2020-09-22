@@ -7,6 +7,6 @@
 
 import Foundation
 
-protocol Queryable {
+public protocol Queryable {
     var queryableItems: [String:Any?] { get }
 }

@@ -38,7 +38,7 @@ public class SQLiteProvider: DataProvider {
         sqlite3_create_function(db, "SHA512", 1, SQLITE_ANY, nil, nil, sha512step, sha512finalize)
         _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS Data (id BLOB PRIMARY KEY, value BLOB);", params: [])
         _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS Records (id BLOB PRIMARY KEY, keyspace BLOB);", params: [])
-        _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS QueriableData (id BLOB PRIMARY KEY, keyspace BLOB, key TEXT, value TEXT);", params: [])
+        _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS QueryableData (recid BLOB PRIMARY KEY, id BLOB, keyspace BLOB, key TEXT, value BLOB);", params: [])
     }
     
     public func close() throws {
@@ -69,6 +69,7 @@ public class SQLiteProvider: DataProvider {
             
         } else {
             // error in statement
+            debugPrint(String(cString: sqlite3_errmsg(db)))
             throw DatabaseError.Execute(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
         }
         
@@ -121,12 +122,13 @@ public class SQLiteProvider: DataProvider {
         if let data = try? JSONEncoder().encode(object) {
             let id = makeId(key, keyspace)
             do {
-                try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?); INSERT OR REPLACE INTO Records (id,keyspace) VALUES (?,?)", params: [id,data,id,keyspace])
+                try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,data])
+                try execute(sql: "INSERT OR REPLACE INTO Records (id,keyspace) VALUES (?,?)", params: [id,keyspace])
                 if let queryableObject = object as? Queryable {
                     //QueriableData (id BLOB PRIMARY KEY, keyspace BLOB, key TEXT, value TEXT)
-                    try? execute(sql: "DELETE FROM QueriableData WHERE id = ?;", params: [id])
+                    try? execute(sql: "DELETE FROM QueryableData WHERE id = ?;", params: [id])
                     for kv in queryableObject.queryableItems {
-                        try? execute(sql: "INSERT OR REPLACE INTO QueriableData (id,keyspace,key,value) VALUES (?,?,?,?);", params: [id,keyspace,kv.key, kv.value])
+                        try? execute(sql: "INSERT OR REPLACE INTO QueryableData (recid,id,keyspace,key,value) VALUES (?,?,?,?,?);", params: [UUID().asData(),id,keyspace,kv.key, kv.value])
                     }
                 }
                 return true
@@ -142,7 +144,7 @@ public class SQLiteProvider: DataProvider {
     public func delete(key: Data, keyspace: Data) -> Bool {
         let id = makeId(key, keyspace)
         do {
-            try execute(sql: "DELETE FROM QueriableData WHERE id = ?;", params: [id])
+            try execute(sql: "DELETE FROM QueryableData WHERE id = ?;", params: [id])
             try execute(sql: "DELETE FROM Data WHERE id = ?;", params: [id])
             try execute(sql: "DELETE FROM Records WHERE id = ?;", params: [id])
             return true
@@ -152,21 +154,20 @@ public class SQLiteProvider: DataProvider {
     }
     
     @discardableResult
-    public func get<T>(key: Data, keyspace: Data, _ closure: ((T?, DatabaseError?) -> T?)) -> T? where T : Decodable, T : Encodable {
+    public func get<T>(key: Data, keyspace: Data) -> T? where T : Decodable, T : Encodable {
         let id = makeId(key, keyspace)
         do {
             if let data = try query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data, let object = try? decoder.decode(T.self, from: objectData){
-                return closure(object,nil)
-            } else {
-                return closure(nil,nil)
+                return object
             }
         } catch {
-            return closure(nil, nil)
+            
         }
+        return nil
     }
     
     @discardableResult
-    public func query<T>(keyspace: Data, params: [param]?, _ closure: (([T], DatabaseError?) -> [T]?)) -> [T]? where T : Decodable, T : Encodable {
+    public func query<T>(keyspace: Data, params: [param]?) -> [T]? where T : Decodable, T : Encodable {
         var results: [T] = []
         var whereParams: [Any?] = []
         // loop to see if there are any where conditions
@@ -217,20 +218,20 @@ public class SQLiteProvider: DataProvider {
             whereSql += wheres.joined(separator: " AND ")
         }
         do {
-            let data = try query(sql: "SELECT value FROM Data WHERE id IN (SELECT id FROM QueriableData \(whereSql) );", params: [whereParams])
+            let data = try query(sql: "SELECT value FROM Data WHERE id IN (SELECT id FROM QueryableData \(whereSql) );", params: [whereParams])
             for d in data {
                 if let objectData = d, let object = try? decoder.decode(T.self, from: objectData) {
                     results.append(object)
                 }
             }
-            return closure(results,nil)
+            return results
         } catch  {
-            return closure([],nil)
+            return []
         }
     }
     
     @discardableResult
-    public func all<T>(keyspace: Data, _ closure: (([T], DatabaseError?) -> [T]?)) -> [T]? where T : Decodable, T : Encodable {
+    public func all<T>(keyspace: Data) -> [T]? where T : Decodable, T : Encodable {
         var results: [T] = []
         do {
             let data = try query(sql: "SELECT value FROM Data WHERE id IN (SELECT id FROM Records WHERE keyspace = ?);", params: [keyspace])
@@ -239,9 +240,9 @@ public class SQLiteProvider: DataProvider {
                     results.append(object)
                 }
             }
-            return closure(results,nil)
+            return results
         } catch  {
-            return closure([],nil)
+            return []
         }
     }
     

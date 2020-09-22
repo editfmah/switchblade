@@ -6,21 +6,29 @@
 //
 
 import Foundation
+import Switchblade
 
-public class Person : Codable {
+public class Person : Codable, SwitchbladeIdentifiable, SwitchbladeKeyspace, Queryable {
+    
+    public var queryableItems: [String : Any?] {
+        return ["name" : self.Name, "age" : self.Age, "department" : self.DepartmentId]
+    }
+    
+    
+    public var key: KeyType {
+        return self.PersonId
+    }
+    
+    public var keyspace: String {
+        return "person"
+    }
+    
     
     init(){ PersonId = UUID() }
-    public var PersonId : UUID?
+    public var PersonId : UUID
     public var Name: String?
     public var Age: Int?
     public var DepartmentId : UUID?
     
 }
 
-public class Department : Codable {
-    
-    init(){ DepartmentId = UUID() }
-    public var DepartmentId : UUID?
-    public var DepartmentName: String?
-    
-}

@@ -22,5 +22,9 @@ let package = Package(
             name: "Switchblade",
             dependencies: ["CryptoSwift"],
             path: "./Sources/switchblade"),
+        .testTarget(
+            name: "SwitchbladeTests",
+            dependencies: ["Switchblade"],
+            path: "./Tests/switchbladeTests"),
     ]
 )
