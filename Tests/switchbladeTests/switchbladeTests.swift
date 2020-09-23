@@ -3,13 +3,13 @@ import XCTest
 
 final class switchbladeTests: XCTestCase {
     
-    
-    // SQLite
-    func testSQLitePersist() {
-        testPersistObject(initSQLiteDatabase())
-    }
-    
     static var allTests = [
-        ("testSQLitePersist",testSQLitePersist),
+        ("testPersistObject",testPersistObject),
+        ("testPersistQueryObject",testPersistQueryObject),
+        ("testPersistMultipleObjectsAndCheckAll", testPersistMultipleObjectsAndCheckAll),
+        ("testPersistMultipleObjectsAndFilterAll",testPersistMultipleObjectsAndFilterAll),
+        ("testPersistMultipleObjectsAndQuery",testPersistMultipleObjectsAndQuery),
+        ("testPersistMultipleObjectsAndQueryMultipleParams", testPersistMultipleObjectsAndQueryMultipleParams),
+        ("testPersistMultipleObjectsAndCheckAllClosure", testPersistMultipleObjectsAndCheckAllClosure)
     ]
 }

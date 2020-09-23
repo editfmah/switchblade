@@ -108,6 +108,7 @@ public class SQLiteProvider: DataProvider {
                 
             }
         } else {
+            print(String(cString: sqlite3_errmsg(db)))
             throw DatabaseError.Query(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
         }
     
@@ -183,42 +184,51 @@ public class SQLiteProvider: DataProvider {
         }
         var whereSql = ""
         if foundWhere {
-            whereSql += " WHERE "
+            whereSql += " QueryableData AS QD0 "
             var wheres: [String] = []
+            var idx = 0
             for p in params ?? [] {
                 switch p {
                 case .where(let key, let op, let param):
+                    if idx > 0 {
+                        whereSql += " JOIN QueryableData AS QD\(idx) on QD\(idx-1).id = QD\(idx).id "
+                    }
                     switch op {
                     case .equals:
-                        wheres.append("(key = ? AND value = ?)")
+                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value = ?)")
                         whereParams.append(key)
                         whereParams.append(param)
                     case .greater:
-                        wheres.append("(key = ? AND value > ?)")
+                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value > ?)")
                         whereParams.append(key)
                         whereParams.append(param)
                     case .isnotnull:
-                        wheres.append("(key = ? AND value IS NOT NULL)")
+                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value IS NOT NULL)")
                         whereParams.append(key)
                         whereParams.append(param)
                     case .isnull:
-                        wheres.append("(key = ? AND value IS NULL)")
+                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value IS NULL)")
                         whereParams.append(key)
                         whereParams.append(param)
                     case .less:
-                        wheres.append("(key = ? AND value < ?)")
+                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value < ?)")
                         whereParams.append(key)
                         whereParams.append(param)
                     }
+                    idx += 1
                     break;
                 default:
                     break
                 }
             }
+            
+            whereSql += " WHERE "
             whereSql += wheres.joined(separator: " AND ")
         }
         do {
-            let data = try query(sql: "SELECT value FROM Data WHERE id IN (SELECT id FROM QueryableData \(whereSql) );", params: [whereParams])
+            // urgh, this is complex, but works well in fact
+            // SELECT QD1.recid FROM QueriableData as QD1 JOIN QueriableData AS QD2 on QD1.recid = QD2.recid JOIN QueriableData AS QD3 on QD2.recid = QD3.recid WHERE (QD1.key = "age" AND QD1.value = 40) AND (QD2."key" = "name" AND QD2.value = "adrian") AND (QD3.key = "surname" AND QD3.value = "herridge")
+            let data = try query(sql: "SELECT value FROM Data WHERE id IN (SELECT QD0.id FROM \(whereSql) );", params: whereParams)
             for d in data {
                 if let objectData = d, let object = try? decoder.decode(T.self, from: objectData) {
                     results.append(object)

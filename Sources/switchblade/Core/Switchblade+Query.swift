@@ -41,34 +41,34 @@ extension Switchblade : SwitchbadeGetter {
         return result
     }
     
-    public func get<T>(key: KeyType, _ closure: ((T?) -> Void)) where T : Decodable, T : Encodable {
+    public func get<T>(key: KeyType, _ closure: (T?) -> T?) -> T? where T : Decodable, T : Encodable {
         let result: T? = provider.get(key: key.key(), keyspace: default_keyspace)
-        closure(result)
+        return closure(result)
     }
     
-    public func get<T>(key: KeyType, keyspace: String, _ closure: ((T?) -> Void)) where T : Decodable, T : Encodable {
+    public func get<T>(key: KeyType, keyspace: String, _ closure: (T?) -> T?) -> T? where T : Decodable, T : Encodable {
         let result: T? = provider.get(key: key.key(), keyspace: keyspace.data(using: .utf8)!)
-        closure(result)
+        return closure(result)
     }
     
-    public func all<T>(_ closure: (([T]?) -> Void)) where T : Decodable, T : Encodable {
+    public func all<T>(_ closure: ([T]?) -> [T]?) -> [T]? where T : Decodable, T : Encodable {
         let result: [T]? = provider.all(keyspace: default_keyspace)
-        closure(result)
+        return closure(result)
     }
     
-    public func all<T>(keyspace: String, _ closure: (([T]?) -> Void)) where T : Decodable, T : Encodable {
+    public func all<T>(keyspace: String, _ closure: ([T]?) -> [T]?) -> [T]? where T : Decodable, T : Encodable {
         let result: [T]? = provider.all(keyspace: keyspace.data(using: .utf8)!)
-        closure(result)
+        return closure(result)
     }
     
-    public func query<T>(parameters: [param], _ closure: (([T]?) -> Void)) where T : Decodable, T : Encodable {
+    public func query<T>(parameters: [param], _ closure: ([T]?) -> [T]?) -> [T]? where T : Decodable, T : Encodable {
         let result: [T]? = provider.query(keyspace: default_keyspace, params: parameters)
-        closure(result)
+        return closure(result)
     }
     
-    public func query<T>(keyspace: String, parameters: [param], _ closure: (([T]?) -> Void)) where T : Decodable, T : Encodable {
+    public func query<T>(keyspace: String, parameters: [param], _ closure: ([T]?) -> [T]?)  -> [T]? where T : Decodable, T : Encodable {
         let result: [T]? = provider.query(keyspace: keyspace.data(using: .utf8)!, params: parameters)
-        closure(result)
+        return closure(result)
     }
     
 }
