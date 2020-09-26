@@ -9,7 +9,13 @@ import Foundation
 
 fileprivate var default_keyspace = "_default_".data(using: .utf8)!
 
-extension Switchblade : SwitchbadeGetter {
+extension Switchblade : SwitchbadeRetriever {
+    
+    public func all<T>(type: T, _ closure: (([T]?) -> Void)) where T : Decodable, T : Encodable {
+        let result: [T]? = provider.all(keyspace: default_keyspace)
+        closure(result)
+    }
+    
     
     public func get<T>(key: KeyType) -> T? where T : Decodable, T : Encodable {
         let result: T? = provider.get(key: key.key(), keyspace: default_keyspace)

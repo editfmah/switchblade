@@ -9,12 +9,12 @@ import Foundation
 import XCTest
 @testable import Switchblade
 
-func initSQLiteDatabase() -> Switchblade {
+func initSQLiteDatabase(_ config: SwitchbladeConfig? = nil) -> Switchblade {
     
     let path = FileManager.default.currentDirectoryPath
     let id = UUID().uuidString
     print("Database Opened: \(path)/\(id).db")
-    let db = Switchblade(provider: SQLiteProvider(path: "\(path)/\(id).db")) { (success, provider, error) in
+    let db = Switchblade(provider: SQLiteProvider(path: "\(path)/\(id).db"), configuration: config) { (success, provider, error) in
         XCTAssert(error == nil, "failed to initialiase")
     }
     return db
@@ -218,11 +218,79 @@ extension switchbladeTests {
                 p3.Name = "George Smith"
                 p3.Age = 28
                 if db.put(p3) {
-                    _ = db.all(keyspace: p1.keyspace) { (results) -> [Person]? in
-                        return results
-                    }
+                    
+                    
                 }
             }
+        }
+    }
+    
+    func testPersistAndQueryObjectEncrypted() {
+        
+        let config = SwitchbladeConfig()
+        config.aes256encryptionKey = Data("big_sprouts".utf8)
+        let db = initSQLiteDatabase(config)
+        
+        let p1 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 41
+        if db.put(p1) {
+            if let retrieved: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
+                
+            } else {
+                XCTFail("failed to retrieve one of the records")
+            }
+        } else {
+            XCTFail("failed to write one of the records")
+        }
+    }
+    
+    func testPersistAndQueryObjectEncryptedWrongSeed() {
+        
+        let config = SwitchbladeConfig()
+        config.aes256encryptionKey = Data("big_sprouts".utf8)
+        let db = initSQLiteDatabase(config)
+        
+        let p1 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 41
+        if db.put(p1) {
+            config.aes256encryptionKey = Data("small_sprouts".utf8)
+            if let retrieved: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
+                XCTFail("failed to retrieve one of the records")
+            } else {
+                
+            }
+        } else {
+            XCTFail("failed to write one of the records")
+        }
+    }
+    
+    func testPersistAndQueryObjectPropertiesEncrypted() {
+        
+        let config = SwitchbladeConfig()
+        config.aes256encryptionKey = Data("big_sprouts".utf8)
+        config.hashQueriableProperties = true
+        let db = initSQLiteDatabase(config)
+        
+        let p1 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 41
+        if db.put(p1) {
+            if let retrieved: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41)]) {
+                if retrieved.count == 1 {
+                    
+                } else {
+                    XCTFail("failed to retrieve one of the records")
+                }
+            } else {
+                XCTFail("failed to retrieve one of the records")
+            }
+        } else {
+            XCTFail("failed to write one of the records")
         }
     }
     

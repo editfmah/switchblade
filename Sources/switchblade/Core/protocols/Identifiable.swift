@@ -33,6 +33,6 @@ public protocol SwitchbladeIdentifiable {
     var key: KeyType { get }
 }
 
-public protocol SwitchbladeKeyspace {
+public protocol KeyspaceIdentifiable {
     var keyspace: String { get }
 }

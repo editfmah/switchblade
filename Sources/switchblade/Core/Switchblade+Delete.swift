@@ -9,25 +9,25 @@ import Foundation
 
 fileprivate var default_keyspace = "_default_".data(using: .utf8)!
 
-extension Switchblade: SwitchbadeDeleter {
+extension Switchblade: SwitchbadeRemove {
     
-    public func remove<T>(_ object: T) -> Bool where T : SwitchbladeIdentifiable {
-        if let keyspaceObject = object as? SwitchbladeKeyspace {
+    @discardableResult public func remove<T>(_ object: T) -> Bool where T : Identifiable {
+        if let keyspaceObject = object as? KeyspaceIdentifiable {
             return provider.delete(key: object.key.key(), keyspace: keyspaceObject.keyspace.data(using: .utf8)!)
         } else {
             return provider.delete(key: object.key.key(), keyspace: default_keyspace)
         }
     }
     
-    public func remove<T>(keyspace: String, _ object: T) -> Bool where T : SwitchbladeIdentifiable {
+    @discardableResult public func remove<T>(keyspace: String, _ object: T) -> Bool where T : Identifiable {
         return provider.delete(key: object.key.key(), keyspace: keyspace.data(using: .utf8)!)
     }
     
-    public func remove(key: KeyType) -> Bool {
+    @discardableResult public func remove(key: KeyType) -> Bool {
         return provider.delete(key: key.key(), keyspace: default_keyspace)
     }
     
-    public func remove(key: KeyType, keyspace: String) -> Bool {
+    @discardableResult public func remove(key: KeyType, keyspace: String) -> Bool {
         return provider.delete(key: key.key(), keyspace: keyspace.data(using: .utf8)!)
     }
     

@@ -18,4 +18,6 @@ public protocol DataProvider {
     @discardableResult func query<T: Codable>(keyspace: Data, params: [param]?) -> [T]?
     @discardableResult func all<T: Codable>(keyspace: Data) -> [T]?
     
+    var config: SwitchbladeConfig! { get set }
+    
 }

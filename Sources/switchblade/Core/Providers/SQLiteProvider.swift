@@ -21,6 +21,8 @@ internal let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.se
 
 public class SQLiteProvider: DataProvider {
     
+    public var config: SwitchbladeConfig!
+    
     var db: OpaquePointer?
     private var p: String?
     let decoder: JSONDecoder = JSONDecoder()
@@ -50,6 +52,16 @@ public class SQLiteProvider: DataProvider {
         var id = Data(key)
         id.append(keyspace)
         return id.sha224()
+    }
+    
+    fileprivate func hashParam(_ key: Data,_ paramValue: Any?) -> Data {
+        var hash = key
+        if let value = paramValue as? Date {
+            hash += Data("\(value.timeIntervalSince1970)".bytes)
+        } else if let value = paramValue {
+            hash += Data("\(value)".bytes)
+        }
+        return hash.sha256()
     }
     
     fileprivate func execute(sql: String, params:[Any?]) throws {
@@ -111,7 +123,7 @@ public class SQLiteProvider: DataProvider {
             print(String(cString: sqlite3_errmsg(db)))
             throw DatabaseError.Query(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
         }
-    
+        
         sqlite3_finalize(stmt)
         
         return results
@@ -120,16 +132,38 @@ public class SQLiteProvider: DataProvider {
     
     public func put<T>(key: Data, keyspace: Data, _ object: T) -> Bool where T : Decodable, T : Encodable {
         
-        if let data = try? JSONEncoder().encode(object) {
+        if let jsonObject = try? JSONEncoder().encode(object) {
             let id = makeId(key, keyspace)
             do {
-                try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,data])
+                if config.aes256encryptionKey == nil {
+                    try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,jsonObject])
+                } else {
+                    // this data is to be stored encrypted
+                    if let encKey = config.aes256encryptionKey {
+                        let key = encKey.sha256()
+                        let iv = (encKey + Data("salty".bytes)).md5()
+                        do {
+                            let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
+                            let encryptedData = Data(try aes.encrypt(jsonObject.bytes))
+                            try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,encryptedData])
+                        } catch {
+                            print("encryption error: \(error)")
+                        }
+                    }
+                }
+                
                 try execute(sql: "INSERT OR REPLACE INTO Records (id,keyspace) VALUES (?,?)", params: [id,keyspace])
                 if let queryableObject = object as? Queryable {
                     //QueriableData (id BLOB PRIMARY KEY, keyspace BLOB, key TEXT, value TEXT)
                     try? execute(sql: "DELETE FROM QueryableData WHERE id = ?;", params: [id])
                     for kv in queryableObject.queryableItems {
-                        try? execute(sql: "INSERT OR REPLACE INTO QueryableData (recid,id,keyspace,key,value) VALUES (?,?,?,?,?);", params: [UUID().asData(),id,keyspace,kv.key, kv.value])
+                        if config.hashQueriableProperties == false {
+                            try? execute(sql: "INSERT OR REPLACE INTO QueryableData (recid,id,keyspace,key,value) VALUES (?,?,?,?,?);", params: [UUID().asData(),id,keyspace,kv.key, kv.value])
+                        } else {
+                            // hash the key and value together so data can be queried, but remains anonymous
+                            let keyHash = hashParam(kv.key.data(using: .utf8)!, kv.value)
+                            try? execute(sql: "INSERT OR REPLACE INTO QueryableData (recid,id,keyspace,key) VALUES (?,?,?,?);", params: [UUID().asData(),id,keyspace,keyHash])
+                        }
                     }
                 }
                 return true
@@ -137,9 +171,7 @@ public class SQLiteProvider: DataProvider {
                 return false
             }
         }
-        
         return false
-        
     }
     
     public func delete(key: Data, keyspace: Data) -> Bool {
@@ -158,8 +190,24 @@ public class SQLiteProvider: DataProvider {
     public func get<T>(key: Data, keyspace: Data) -> T? where T : Decodable, T : Encodable {
         let id = makeId(key, keyspace)
         do {
-            if let data = try query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data, let object = try? decoder.decode(T.self, from: objectData){
-                return object
+            if config.aes256encryptionKey == nil {
+                if let data = try query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data, let object = try? decoder.decode(T.self, from: objectData) {
+                    return object
+                }
+            } else {
+                if let data = try query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data, let encKey = config.aes256encryptionKey {
+                    let key = encKey.sha256()
+                    let iv = (encKey + Data("salty".bytes)).md5()
+                    do {
+                        let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
+                        let decryptedBytes = try aes.decrypt(objectData.bytes)
+                        let decryptedData = Data(decryptedBytes)
+                        let object = try decoder.decode(T.self, from: decryptedData)
+                        return object
+                    } catch {
+                        print("encryption error: \(error)")
+                    }
+                }
             }
         } catch {
             
@@ -195,9 +243,14 @@ public class SQLiteProvider: DataProvider {
                     }
                     switch op {
                     case .equals:
-                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value = ?)")
-                        whereParams.append(key)
-                        whereParams.append(param)
+                        if config.hashQueriableProperties {
+                            wheres.append("(QD\(idx).key = ?)")
+                            whereParams.append(hashParam(key.data(using: .utf8)!, param))
+                        } else {
+                            wheres.append("(QD\(idx).key = ? AND QD\(idx).value = ?)")
+                            whereParams.append(key)
+                            whereParams.append(param)
+                        }
                     case .greater:
                         wheres.append("(QD\(idx).key = ? AND QD\(idx).value > ?)")
                         whereParams.append(key)
@@ -230,8 +283,26 @@ public class SQLiteProvider: DataProvider {
             // SELECT QD1.recid FROM QueriableData as QD1 JOIN QueriableData AS QD2 on QD1.recid = QD2.recid JOIN QueriableData AS QD3 on QD2.recid = QD3.recid WHERE (QD1.key = "age" AND QD1.value = 40) AND (QD2."key" = "name" AND QD2.value = "adrian") AND (QD3.key = "surname" AND QD3.value = "herridge")
             let data = try query(sql: "SELECT value FROM Data WHERE id IN (SELECT QD0.id FROM \(whereSql) );", params: whereParams)
             for d in data {
-                if let objectData = d, let object = try? decoder.decode(T.self, from: objectData) {
-                    results.append(object)
+                if config.aes256encryptionKey == nil {
+                    if let objectData = d, let object = try? decoder.decode(T.self, from: objectData) {
+                        results.append(object)
+                    }
+                } else {
+                    // this data is to be stored encrypted
+                    if let encKey = config.aes256encryptionKey {
+                        let key = encKey.sha256()
+                        let iv = (encKey + Data("salty".bytes)).md5()
+                        do {
+                            let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
+                            if let encryptedData = d {
+                                let objectData = try aes.decrypt(encryptedData.bytes)
+                                let object = try decoder.decode(T.self, from: Data(objectData))
+                                results.append(object)
+                            }
+                        } catch {
+                            print("encryption error: \(error)")
+                        }
+                    }
                 }
             }
             return results
@@ -246,8 +317,26 @@ public class SQLiteProvider: DataProvider {
         do {
             let data = try query(sql: "SELECT value FROM Data WHERE id IN (SELECT id FROM Records WHERE keyspace = ?);", params: [keyspace])
             for d in data {
-                if let objectData = d, let object = try? decoder.decode(T.self, from: objectData) {
-                    results.append(object)
+                if config.aes256encryptionKey == nil {
+                    if let objectData = d, let object = try? decoder.decode(T.self, from: objectData) {
+                        results.append(object)
+                    }
+                } else {
+                    // this data is to be stored encrypted
+                    if let encKey = config.aes256encryptionKey {
+                        let key = encKey.sha256()
+                        let iv = (encKey + Data("salty".bytes)).md5()
+                        do {
+                            let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
+                            if let encryptedData = d {
+                                let objectData = try aes.decrypt(encryptedData.bytes)
+                                let object = try decoder.decode(T.self, from: Data(objectData))
+                                results.append(object)
+                            }
+                        } catch {
+                            print("encryption error: \(error)")
+                        }
+                    }
                 }
             }
             return results
@@ -293,7 +382,7 @@ public class SQLiteProvider: DataProvider {
             } else {
                 sqlite3_bind_null(stmt, paramCount)
             }
-
+            
             paramCount += 1
             
         }

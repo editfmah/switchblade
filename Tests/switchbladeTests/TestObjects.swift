@@ -8,12 +8,11 @@
 import Foundation
 import Switchblade
 
-public class Person : Codable, SwitchbladeIdentifiable, SwitchbladeKeyspace, Queryable {
+public class Person : Codable, Identifiable, KeyspaceIdentifiable, Queryable {
     
     public var queryableItems: [String : Any?] {
         return ["name" : self.Name, "age" : self.Age, "department" : self.DepartmentId]
     }
-    
     
     public var key: KeyType {
         return self.PersonId
@@ -22,7 +21,6 @@ public class Person : Codable, SwitchbladeIdentifiable, SwitchbladeKeyspace, Que
     public var keyspace: String {
         return "person"
     }
-    
     
     init(){ PersonId = UUID() }
     public var PersonId : UUID

@@ -21,6 +21,11 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		609B54C7251B60000045611B /* KeyspaceIdentifiable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609B54C6251B60000045611B /* KeyspaceIdentifiable.swift */; };
+		609B54CF251B66880045611B /* SwitchbladeConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609B54CE251B66880045611B /* SwitchbladeConfig.swift */; };
+		609B54DD251B74AE0045611B /* SwitchbladeIOProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609B54DC251B74AE0045611B /* SwitchbladeIOProvider.swift */; };
+		609B54E5251B74D10045611B /* SwitchbladeSyncProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609B54E4251B74D10045611B /* SwitchbladeSyncProvider.swift */; };
+		609B54ED251CDD170045611B /* SwitchbladeAtomic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609B54EC251CDD170045611B /* SwitchbladeAtomic.swift */; };
 		OBJ_126 /* AEAD.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_36 /* AEAD.swift */; };
 		OBJ_127 /* AEADChaCha20Poly1305.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_37 /* AEADChaCha20Poly1305.swift */; };
 		OBJ_128 /* AES.Cryptors.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_38 /* AES.Cryptors.swift */; };
@@ -104,12 +109,12 @@
 		OBJ_217 /* Switchblade+Query.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_14 /* Switchblade+Query.swift */; };
 		OBJ_218 /* Switchblade+Setters.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_15 /* Switchblade+Setters.swift */; };
 		OBJ_219 /* DataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_17 /* DataProvider.swift */; };
-		OBJ_220 /* SWIdentifiable.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_18 /* SWIdentifiable.swift */; };
-		OBJ_221 /* SwitchbladeDeleter.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_19 /* SwitchbladeDeleter.swift */; };
-		OBJ_222 /* SwitchbladeGetter.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_20 /* SwitchbladeGetter.swift */; };
+		OBJ_220 /* Identifiable.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_18 /* Identifiable.swift */; };
+		OBJ_221 /* SwitchbladeRemove.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_19 /* SwitchbladeRemove.swift */; };
+		OBJ_222 /* SwitchbladeRetrieve.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_20 /* SwitchbladeRetrieve.swift */; };
 		OBJ_224 /* SwitchbladeInterface.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_22 /* SwitchbladeInterface.swift */; };
-		OBJ_225 /* SwitchbladeQueryable.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_23 /* SwitchbladeQueryable.swift */; };
-		OBJ_226 /* SwitchbladeSetter.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_24 /* SwitchbladeSetter.swift */; };
+		OBJ_225 /* Queryable.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_23 /* Queryable.swift */; };
+		OBJ_226 /* SwitchbladePutter.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_24 /* SwitchbladePutter.swift */; };
 		OBJ_227 /* Switchblade.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_25 /* Switchblade.swift */; };
 		OBJ_229 /* CryptoSwift.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = "CryptoSwift::CryptoSwift::Product" /* CryptoSwift.framework */; };
 		OBJ_236 /* Package.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_6 /* Package.swift */; };
@@ -154,6 +159,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		609B54C6251B60000045611B /* KeyspaceIdentifiable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyspaceIdentifiable.swift; sourceTree = "<group>"; };
+		609B54CE251B66880045611B /* SwitchbladeConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeConfig.swift; sourceTree = "<group>"; };
+		609B54DC251B74AE0045611B /* SwitchbladeIOProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeIOProvider.swift; sourceTree = "<group>"; };
+		609B54E4251B74D10045611B /* SwitchbladeSyncProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeSyncProvider.swift; sourceTree = "<group>"; };
+		609B54EC251CDD170045611B /* SwitchbladeAtomic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeAtomic.swift; sourceTree = "<group>"; };
 		"CryptoSwift::CryptoSwift::Product" /* CryptoSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CryptoSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		OBJ_100 /* SHA3.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SHA3.swift; sourceTree = "<group>"; };
 		OBJ_101 /* Scrypt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scrypt.swift; sourceTree = "<group>"; };
@@ -178,12 +188,12 @@
 		OBJ_14 /* Switchblade+Query.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Switchblade+Query.swift"; sourceTree = "<group>"; };
 		OBJ_15 /* Switchblade+Setters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Switchblade+Setters.swift"; sourceTree = "<group>"; };
 		OBJ_17 /* DataProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataProvider.swift; sourceTree = "<group>"; };
-		OBJ_18 /* SWIdentifiable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SWIdentifiable.swift; sourceTree = "<group>"; };
-		OBJ_19 /* SwitchbladeDeleter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeDeleter.swift; sourceTree = "<group>"; };
-		OBJ_20 /* SwitchbladeGetter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeGetter.swift; sourceTree = "<group>"; };
+		OBJ_18 /* Identifiable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Identifiable.swift; sourceTree = "<group>"; };
+		OBJ_19 /* SwitchbladeRemove.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeRemove.swift; sourceTree = "<group>"; };
+		OBJ_20 /* SwitchbladeRetrieve.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeRetrieve.swift; sourceTree = "<group>"; };
 		OBJ_22 /* SwitchbladeInterface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeInterface.swift; sourceTree = "<group>"; };
-		OBJ_23 /* SwitchbladeQueryable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeQueryable.swift; sourceTree = "<group>"; };
-		OBJ_24 /* SwitchbladeSetter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeSetter.swift; sourceTree = "<group>"; };
+		OBJ_23 /* Queryable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Queryable.swift; sourceTree = "<group>"; };
+		OBJ_24 /* SwitchbladePutter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladePutter.swift; sourceTree = "<group>"; };
 		OBJ_25 /* Switchblade.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Switchblade.swift; sourceTree = "<group>"; };
 		OBJ_27 /* TestObjects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestObjects.swift; sourceTree = "<group>"; };
 		OBJ_28 /* Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests.swift; sourceTree = "<group>"; };
@@ -289,6 +299,8 @@
 			isa = PBXGroup;
 			children = (
 				OBJ_11 /* SQLiteProvider.swift */,
+				609B54DC251B74AE0045611B /* SwitchbladeIOProvider.swift */,
+				609B54E4251B74D10045611B /* SwitchbladeSyncProvider.swift */,
 			);
 			path = Providers;
 			sourceTree = "<group>";
@@ -307,12 +319,14 @@
 			isa = PBXGroup;
 			children = (
 				OBJ_17 /* DataProvider.swift */,
-				OBJ_18 /* SWIdentifiable.swift */,
-				OBJ_19 /* SwitchbladeDeleter.swift */,
-				OBJ_20 /* SwitchbladeGetter.swift */,
+				OBJ_18 /* Identifiable.swift */,
+				OBJ_19 /* SwitchbladeRemove.swift */,
+				OBJ_20 /* SwitchbladeRetrieve.swift */,
 				OBJ_22 /* SwitchbladeInterface.swift */,
-				OBJ_23 /* SwitchbladeQueryable.swift */,
-				OBJ_24 /* SwitchbladeSetter.swift */,
+				OBJ_23 /* Queryable.swift */,
+				OBJ_24 /* SwitchbladePutter.swift */,
+				609B54C6251B60000045611B /* KeyspaceIdentifiable.swift */,
+				609B54EC251CDD170045611B /* SwitchbladeAtomic.swift */,
 			);
 			path = protocols;
 			sourceTree = "<group>";
@@ -434,7 +448,7 @@
 			path = BlockMode;
 			sourceTree = "<group>";
 		};
-		OBJ_5 /*  */ = {
+		OBJ_5 = {
 			isa = PBXGroup;
 			children = (
 				OBJ_6 /* Package.swift */,
@@ -445,7 +459,6 @@
 				OBJ_119 /* LICENSE */,
 				OBJ_120 /* README.md */,
 			);
-			name = "";
 			sourceTree = "<group>";
 		};
 		OBJ_7 /* Sources */ = {
@@ -483,6 +496,7 @@
 				OBJ_13 /* Switchblade+Delete.swift */,
 				OBJ_14 /* Switchblade+Query.swift */,
 				OBJ_15 /* Switchblade+Setters.swift */,
+				609B54CE251B66880045611B /* SwitchbladeConfig.swift */,
 				OBJ_16 /* protocols */,
 			);
 			path = Core;
@@ -598,7 +612,7 @@
 			knownRegions = (
 				en,
 			);
-			mainGroup = OBJ_5 /*  */;
+			mainGroup = OBJ_5;
 			productRefGroup = OBJ_115 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -710,17 +724,22 @@
 			files = (
 				OBJ_213 /* Errors.swift in Sources */,
 				OBJ_214 /* SQLiteProvider.swift in Sources */,
+				609B54CF251B66880045611B /* SwitchbladeConfig.swift in Sources */,
+				609B54DD251B74AE0045611B /* SwitchbladeIOProvider.swift in Sources */,
 				OBJ_215 /* PublicEnums.swift in Sources */,
 				OBJ_216 /* Switchblade+Delete.swift in Sources */,
 				OBJ_217 /* Switchblade+Query.swift in Sources */,
 				OBJ_218 /* Switchblade+Setters.swift in Sources */,
+				609B54E5251B74D10045611B /* SwitchbladeSyncProvider.swift in Sources */,
+				609B54ED251CDD170045611B /* SwitchbladeAtomic.swift in Sources */,
 				OBJ_219 /* DataProvider.swift in Sources */,
-				OBJ_220 /* SWIdentifiable.swift in Sources */,
-				OBJ_221 /* SwitchbladeDeleter.swift in Sources */,
-				OBJ_222 /* SwitchbladeGetter.swift in Sources */,
+				OBJ_220 /* Identifiable.swift in Sources */,
+				OBJ_221 /* SwitchbladeRemove.swift in Sources */,
+				OBJ_222 /* SwitchbladeRetrieve.swift in Sources */,
 				OBJ_224 /* SwitchbladeInterface.swift in Sources */,
-				OBJ_225 /* SwitchbladeQueryable.swift in Sources */,
-				OBJ_226 /* SwitchbladeSetter.swift in Sources */,
+				OBJ_225 /* Queryable.swift in Sources */,
+				OBJ_226 /* SwitchbladePutter.swift in Sources */,
+				609B54C7251B60000045611B /* KeyspaceIdentifiable.swift in Sources */,
 				OBJ_227 /* Switchblade.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

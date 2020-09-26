@@ -7,7 +7,7 @@
 
 import Foundation
 
-public protocol SwitchbadeSetter {
+public protocol SwitchbadePutter {
     @discardableResult func put<T:Codable>(_ object: T) -> Bool where T: SwitchbladeIdentifiable
     @discardableResult func put<T:Codable>(keyspace: String, _ object: T) -> Bool where T: SwitchbladeIdentifiable
     @discardableResult func put<T:Codable>(key: KeyType, _ object: T) -> Bool

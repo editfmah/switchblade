@@ -9,29 +9,29 @@ import Foundation
 
 fileprivate var default_keyspace = "_default_".data(using: .utf8)!
 
-extension Switchblade: SwitchbadeSetter {
+extension Switchblade: SwitchbadePutter {
     
-    public func put<T>(_ object: T) -> Bool where T : Decodable, T : Encodable, T : SwitchbladeIdentifiable {
-        if let keyspaceObject = object as? SwitchbladeKeyspace {
+    @discardableResult public func put<T>(_ object: T) -> Bool where T : Decodable, T : Encodable, T : Identifiable {
+        if let keyspaceObject = object as? KeyspaceIdentifiable {
             return provider.put(key: object.key.key(), keyspace: keyspaceObject.keyspace.data(using: .utf8)!, object)
         } else {
             return provider.put(key: object.key.key(), keyspace: default_keyspace, object)
         }
     }
     
-    public func put<T>(keyspace: String, _ object: T) -> Bool where T : Decodable, T : Encodable, T : SwitchbladeIdentifiable {
+    @discardableResult public func put<T>(keyspace: String, _ object: T) -> Bool where T : Decodable, T : Encodable, T : Identifiable {
         return provider.put(key: object.key.key(), keyspace: keyspace.data(using: .utf8)!, object)
     }
     
-    public func put<T>(key: KeyType, _ object: T) -> Bool where T : Decodable, T : Encodable {
-        if let keyspaceObject = object as? SwitchbladeKeyspace {
+    @discardableResult public func put<T>(key: KeyType, _ object: T) -> Bool where T : Decodable, T : Encodable {
+        if let keyspaceObject = object as? KeyspaceIdentifiable {
             return provider.put(key: key.key(), keyspace: keyspaceObject.keyspace.data(using: .utf8)!, object)
         } else {
             return provider.put(key: key.key(), keyspace: default_keyspace, object)
         }
     }
     
-    public func put<T>(key: KeyType, keyspace: String, _ object: T) -> Bool where T : Decodable, T : Encodable {
+    @discardableResult public func put<T>(key: KeyType, keyspace: String, _ object: T) -> Bool where T : Decodable, T : Encodable {
         return provider.put(key: key.key(), keyspace: keyspace.data(using: .utf8)!, object)
     }
 

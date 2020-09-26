@@ -10,7 +10,7 @@ import Foundation
 public typealias QueryResultsClosure<T:Codable> = ((_ results: [T]?) -> [T]?)
 public typealias QueryResultClosure<T:Codable> = ((_ result: T?) -> T?)
 
-public protocol SwitchbadeGetter {
+public protocol SwitchbadeRetriever {
     
     // typed by expected return/assignment value
     @discardableResult func get<T:Codable>(key: KeyType) -> T?
