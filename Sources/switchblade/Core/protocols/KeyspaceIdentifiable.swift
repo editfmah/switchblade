@@ -6,3 +6,7 @@
 //
 
 import Foundation
+
+public protocol KeyspaceIdentifiable {
+    var keyspace: String { get }
+}

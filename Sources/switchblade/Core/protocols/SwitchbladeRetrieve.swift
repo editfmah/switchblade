@@ -20,12 +20,13 @@ public protocol SwitchbadeRetriever {
     @discardableResult func query<T:Codable>(parameters:[param]) -> [T]?
     @discardableResult func query<T:Codable>(keyspace: String, parameters:[param]) -> [T]?
     
-    // closure typed results
-    func get<T:Codable>(key: KeyType, _ closure: QueryResultClosure<T>) -> T?
-    func get<T:Codable>(key: KeyType, keyspace: String, _ closure: QueryResultClosure<T>) -> T?
-    func all<T:Codable>(_ closure: QueryResultsClosure<T>) -> [T]?
-    func all<T:Codable>(keyspace: String, _ closure: QueryResultsClosure<T>) -> [T]?
-    func query<T:Codable>(parameters:[param], _ closure: QueryResultsClosure<T>) -> [T]?
-    func query<T:Codable>(keyspace: String, parameters:[param], _ closure: QueryResultsClosure<T>) -> [T]?
+// closure typed results - not implemented until further tricks with generics can be performed
+//    func get<T:Codable>(key: KeyType, _ closure: QueryResultClosure<T>) -> T?
+//    func get<T:Codable>(key: KeyType, keyspace: String, _ closure: QueryResultClosure<T>) -> T?
+//    func all<T:Codable>(_ closure: QueryResultsClosure<T>) -> [T]?
+//    func all<T:Codable>(keyspace: String, _ closure: QueryResultsClosure<T>) -> [T]?
+//    func query<T:Codable>(parameters:[param], _ closure: QueryResultsClosure<T>) -> [T]?
+//    func query<T:Codable>(keyspace: String, parameters:[param], _ closure: QueryResultsClosure<T>) -> [T]?
+//    func all<T:Codable>(type: T, _ closure: ((_ results: [T]?) -> Void))
     
 }
