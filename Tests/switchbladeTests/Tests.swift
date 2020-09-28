@@ -201,30 +201,6 @@ extension switchbladeTests {
         XCTFail("failed to write one of the records")
     }
     
-    func testPersistMultipleObjectsAndCheckAllClosure() {
-        
-        let db = initSQLiteDatabase()
-        
-        let p1 = Person()
-        let p2 = Person()
-        let p3 = Person()
-        
-        p1.Name = "Adrian Herridge"
-        p1.Age = 41
-        if db.put(p1) {
-            p2.Name = "Neil Bostrom"
-            p2.Age = 38
-            if db.put(p2) {
-                p3.Name = "George Smith"
-                p3.Age = 28
-                if db.put(p3) {
-                    
-                    
-                }
-            }
-        }
-    }
-    
     func testPersistAndQueryObjectEncrypted() {
         
         let config = SwitchbladeConfig()
@@ -292,6 +268,118 @@ extension switchbladeTests {
         } else {
             XCTFail("failed to write one of the records")
         }
+    }
+    
+    func testQueryParamEqualls() {
+        
+        let db = initSQLiteDatabase()
+        
+        let p1 = Person()
+        let p2 = Person()
+        let p3 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 41
+        db.put(p1)
+        p2.Name = "Neil Bostrom"
+        p2.Age = 38
+        db.put(p2)
+        p3.Name = "George Smith"
+        p3.Age = 28
+        db.put(p3)
+        
+        if let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41)]) {
+            if results.count == 1 {
+                if let result = results.first, result.Name == "Adrian Herridge" {
+                    return
+                }
+            }
+        }
+        
+        XCTFail("failed to write one of the recordss")
+    }
+    
+    func testQueryParamGreaterThan() {
+        
+        let db = initSQLiteDatabase()
+        
+        let p1 = Person()
+        let p2 = Person()
+        let p3 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 41
+        db.put(p1)
+        p2.Name = "Neil Bostrom"
+        p2.Age = 38
+        db.put(p2)
+        p3.Name = "George Smith"
+        p3.Age = 28
+        db.put(p3)
+        
+        if let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .greater, 30)]) {
+            if results.count == 2 {
+                return
+            }
+        }
+        
+        XCTFail("failed to write one of the recordss")
+    }
+    
+    func testQueryParamLessThan() {
+        
+        let db = initSQLiteDatabase()
+        
+        let p1 = Person()
+        let p2 = Person()
+        let p3 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 41
+        db.put(p1)
+        p2.Name = "Neil Bostrom"
+        p2.Age = 38
+        db.put(p2)
+        p3.Name = "George Smith"
+        p3.Age = 28
+        db.put(p3)
+        
+        if let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .less, 40)]) {
+            if results.count == 2 {
+                return
+            }
+        }
+        
+        XCTFail("failed to write one of the recordss")
+    }
+    
+    func testQueryParamIsNull() {
+        
+        let db = initSQLiteDatabase()
+        
+        let p1 = Person()
+        let p2 = Person()
+        let p3 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 41
+        db.put(p1)
+        p2.Name = "Neil Bostrom"
+        p2.Age = nil
+        db.put(p2)
+        p3.Name = "George Smith"
+        p3.Age = 28
+        db.put(p3)
+        
+        if let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .isnull, nil),.where("name", .equals, "Neil Bostrom")]) {
+            if results.count == 1 {
+                if let result = results.first, result.Name == "Neil Bostrom" {
+                    return
+                }
+            }
+        }
+        
+        XCTFail("failed to write one of the recordss")
     }
     
 }

@@ -10,6 +10,5 @@ final class switchbladeTests: XCTestCase {
         ("testPersistMultipleObjectsAndFilterAll",testPersistMultipleObjectsAndFilterAll),
         ("testPersistMultipleObjectsAndQuery",testPersistMultipleObjectsAndQuery),
         ("testPersistMultipleObjectsAndQueryMultipleParams", testPersistMultipleObjectsAndQueryMultipleParams),
-        ("testPersistMultipleObjectsAndCheckAllClosure", testPersistMultipleObjectsAndCheckAllClosure)
     ]
 }

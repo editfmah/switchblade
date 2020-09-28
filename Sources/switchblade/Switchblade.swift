@@ -3,10 +3,15 @@ import Foundation
 
 public class Switchblade : SwitchbladeInterface {
     
+    let instance: UUID = UUID()
     var provider: DataProvider
     var config: SwitchbladeConfig = SwitchbladeConfig()
     
     static var defaultProvider: DataProvider?
+    
+    // atomic functions
+    static var locks: [UUID : Mutex] = [:]
+    static var errors: [UUID : Bool] = [:]
     
     public required init(provider: DataProvider, configuration: SwitchbladeConfig? = nil) throws {
         self.provider = provider
@@ -20,6 +25,10 @@ public class Switchblade : SwitchbladeInterface {
         } else {
             self.provider.config = SwitchbladeConfig()
         }
+        
+        Switchblade.locks[instance] = Mutex()
+        Switchblade.errors[instance] = false
+        self.provider.blade = self
         
         // now, open the connection
         try self.provider.open()
@@ -38,9 +47,13 @@ public class Switchblade : SwitchbladeInterface {
             self.provider.config = SwitchbladeConfig()
         }
         
+        self.provider.blade = self
+        
         // now, open the connection
         do {
             try self.provider.open()
+            Switchblade.locks[instance] = Mutex()
+            Switchblade.errors[instance] = false
             completion?(true, provider, nil)
         } catch DatabaseError.Init(let e) {
             completion?(false, provider, DatabaseError.Init(e))

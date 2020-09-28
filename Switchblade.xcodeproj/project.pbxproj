@@ -26,6 +26,9 @@
 		609B54DD251B74AE0045611B /* SwitchbladeIOProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609B54DC251B74AE0045611B /* SwitchbladeIOProvider.swift */; };
 		609B54E5251B74D10045611B /* SwitchbladeSyncProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609B54E4251B74D10045611B /* SwitchbladeSyncProvider.swift */; };
 		609B54ED251CDD170045611B /* SwitchbladeAtomic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609B54EC251CDD170045611B /* SwitchbladeAtomic.swift */; };
+		60FDF14625207E9000F91A12 /* Atomic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60FDF14525207E9000F91A12 /* Atomic.swift */; };
+		60FDF14D25207F2900F91A12 /* mutex.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_30 /* mutex.swift */; };
+		60FDF15B2520810B00F91A12 /* Switchblade+Atomic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60FDF15A2520810B00F91A12 /* Switchblade+Atomic.swift */; };
 		OBJ_126 /* AEAD.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_36 /* AEAD.swift */; };
 		OBJ_127 /* AEADChaCha20Poly1305.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_37 /* AEADChaCha20Poly1305.swift */; };
 		OBJ_128 /* AES.Cryptors.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_38 /* AES.Cryptors.swift */; };
@@ -121,7 +124,6 @@
 		OBJ_247 /* TestObjects.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_27 /* TestObjects.swift */; };
 		OBJ_248 /* Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_28 /* Tests.swift */; };
 		OBJ_249 /* XCTestManifests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_29 /* XCTestManifests.swift */; };
-		OBJ_250 /* mutex.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_30 /* mutex.swift */; };
 		OBJ_251 /* switchbladeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_31 /* switchbladeTests.swift */; };
 		OBJ_253 /* Switchblade.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = "Switchblade::Switchblade::Product" /* Switchblade.framework */; };
 		OBJ_254 /* CryptoSwift.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = "CryptoSwift::CryptoSwift::Product" /* CryptoSwift.framework */; };
@@ -164,6 +166,8 @@
 		609B54DC251B74AE0045611B /* SwitchbladeIOProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeIOProvider.swift; sourceTree = "<group>"; };
 		609B54E4251B74D10045611B /* SwitchbladeSyncProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeSyncProvider.swift; sourceTree = "<group>"; };
 		609B54EC251CDD170045611B /* SwitchbladeAtomic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeAtomic.swift; sourceTree = "<group>"; };
+		60FDF14525207E9000F91A12 /* Atomic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Atomic.swift; sourceTree = "<group>"; };
+		60FDF15A2520810B00F91A12 /* Switchblade+Atomic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Switchblade+Atomic.swift"; sourceTree = "<group>"; };
 		"CryptoSwift::CryptoSwift::Product" /* CryptoSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = CryptoSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		OBJ_100 /* SHA3.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SHA3.swift; sourceTree = "<group>"; };
 		OBJ_101 /* Scrypt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scrypt.swift; sourceTree = "<group>"; };
@@ -327,6 +331,7 @@
 				OBJ_24 /* SwitchbladePutter.swift */,
 				609B54C6251B60000045611B /* KeyspaceIdentifiable.swift */,
 				609B54EC251CDD170045611B /* SwitchbladeAtomic.swift */,
+				60FDF14525207E9000F91A12 /* Atomic.swift */,
 			);
 			path = protocols;
 			sourceTree = "<group>";
@@ -337,7 +342,6 @@
 				OBJ_27 /* TestObjects.swift */,
 				OBJ_28 /* Tests.swift */,
 				OBJ_29 /* XCTestManifests.swift */,
-				OBJ_30 /* mutex.swift */,
 				OBJ_31 /* switchbladeTests.swift */,
 			);
 			name = Tests;
@@ -490,6 +494,7 @@
 		OBJ_8 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				OBJ_30 /* mutex.swift */,
 				OBJ_9 /* Errors.swift */,
 				OBJ_10 /* Providers */,
 				OBJ_12 /* PublicEnums.swift */,
@@ -497,6 +502,7 @@
 				OBJ_14 /* Switchblade+Query.swift */,
 				OBJ_15 /* Switchblade+Setters.swift */,
 				609B54CE251B66880045611B /* SwitchbladeConfig.swift */,
+				60FDF15A2520810B00F91A12 /* Switchblade+Atomic.swift */,
 				OBJ_16 /* protocols */,
 			);
 			path = Core;
@@ -726,15 +732,18 @@
 				OBJ_214 /* SQLiteProvider.swift in Sources */,
 				609B54CF251B66880045611B /* SwitchbladeConfig.swift in Sources */,
 				609B54DD251B74AE0045611B /* SwitchbladeIOProvider.swift in Sources */,
+				60FDF14625207E9000F91A12 /* Atomic.swift in Sources */,
 				OBJ_215 /* PublicEnums.swift in Sources */,
 				OBJ_216 /* Switchblade+Delete.swift in Sources */,
 				OBJ_217 /* Switchblade+Query.swift in Sources */,
 				OBJ_218 /* Switchblade+Setters.swift in Sources */,
+				60FDF14D25207F2900F91A12 /* mutex.swift in Sources */,
 				609B54E5251B74D10045611B /* SwitchbladeSyncProvider.swift in Sources */,
 				609B54ED251CDD170045611B /* SwitchbladeAtomic.swift in Sources */,
 				OBJ_219 /* DataProvider.swift in Sources */,
 				OBJ_220 /* Identifiable.swift in Sources */,
 				OBJ_221 /* SwitchbladeRemove.swift in Sources */,
+				60FDF15B2520810B00F91A12 /* Switchblade+Atomic.swift in Sources */,
 				OBJ_222 /* SwitchbladeRetrieve.swift in Sources */,
 				OBJ_224 /* SwitchbladeInterface.swift in Sources */,
 				OBJ_225 /* Queryable.swift in Sources */,
@@ -759,7 +768,6 @@
 				OBJ_247 /* TestObjects.swift in Sources */,
 				OBJ_248 /* Tests.swift in Sources */,
 				OBJ_249 /* XCTestManifests.swift in Sources */,
-				OBJ_250 /* mutex.swift in Sources */,
 				OBJ_251 /* switchbladeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

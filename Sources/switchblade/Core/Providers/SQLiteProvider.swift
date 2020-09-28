@@ -22,6 +22,7 @@ internal let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.se
 public class SQLiteProvider: DataProvider {
     
     public var config: SwitchbladeConfig!
+    public weak var blade: Switchblade!
     
     var db: OpaquePointer?
     private var p: String?
@@ -82,6 +83,7 @@ public class SQLiteProvider: DataProvider {
         } else {
             // error in statement
             debugPrint(String(cString: sqlite3_errmsg(db)))
+            Switchblade.errors[blade.instance] = true
             throw DatabaseError.Execute(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
         }
         
@@ -121,6 +123,7 @@ public class SQLiteProvider: DataProvider {
             }
         } else {
             print(String(cString: sqlite3_errmsg(db)))
+            Switchblade.errors[blade.instance] = true
             throw DatabaseError.Query(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
         }
         
@@ -128,6 +131,22 @@ public class SQLiteProvider: DataProvider {
         
         return results
         
+    }
+    
+    public func transact(_ mode: transaction) -> Bool {
+        do {
+            switch mode {
+            case .begin:
+                try execute(sql: "BEGIN TRANSACTION", params: [])
+            case .commit:
+                try execute(sql: "COMMIT TRANSACTION", params: [])
+            case .rollback:
+                try execute(sql: "ROLLBACK TRANSACTION", params: [])
+            }
+            return true
+        } catch {
+            return false
+        }
     }
     
     public func put<T>(key: Data, keyspace: Data, _ object: T) -> Bool where T : Decodable, T : Encodable {
@@ -258,11 +277,9 @@ public class SQLiteProvider: DataProvider {
                     case .isnotnull:
                         wheres.append("(QD\(idx).key = ? AND QD\(idx).value IS NOT NULL)")
                         whereParams.append(key)
-                        whereParams.append(param)
                     case .isnull:
                         wheres.append("(QD\(idx).key = ? AND QD\(idx).value IS NULL)")
                         whereParams.append(key)
-                        whereParams.append(param)
                     case .less:
                         wheres.append("(QD\(idx).key = ? AND QD\(idx).value < ?)")
                         whereParams.append(key)

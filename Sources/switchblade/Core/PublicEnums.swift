@@ -7,6 +7,12 @@
 
 import Foundation
 
+public enum transaction {
+    case begin
+    case commit
+    case rollback
+}
+
 public enum op {
     case equals
     case greater
