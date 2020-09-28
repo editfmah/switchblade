@@ -44,5 +44,45 @@ public class Mutex {
         }
     }
     
+    public func throwingMutex(_ closure:(() throws -> Void)) throws {
+        if thread != Thread.current {
+            try lock.sync {
+                thread = Thread.current
+                try closure()
+                thread = nil
+            }
+        } else {
+            try closure()
+        }
+    }
+    
+    public func mutex<T>(_ closure:() -> T?) -> T? {
+        if thread != Thread.current {
+            var retValue: T? = nil
+            lock.sync {
+                thread = Thread.current
+                retValue = closure()
+                thread = nil
+            }
+            return retValue
+        } else {
+            return closure()
+        }
+    }
+    
+    public func throwingMutex<T>(_ closure:() throws -> T?) throws -> T? {
+        if thread != Thread.current {
+            var retValue: T? = nil
+            try lock.sync {
+                thread = Thread.current
+                retValue = try closure()
+                thread = nil
+            }
+            return retValue
+        } else {
+            return try closure()
+        }
+    }
+    
 }
 

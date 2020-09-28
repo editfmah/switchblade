@@ -23,6 +23,7 @@ public class SQLiteProvider: DataProvider {
     
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
+    fileprivate var lock = Mutex()
     
     var db: OpaquePointer?
     private var p: String?
@@ -67,69 +68,79 @@ public class SQLiteProvider: DataProvider {
     
     fileprivate func execute(sql: String, params:[Any?]) throws {
         
-        var values: [Any?] = []
-        for o in params {
-            values.append(o)
-        }
-        
-        var stmt: OpaquePointer?
-        if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
-            
-            bind(stmt: stmt, params: values);
-            while sqlite3_step(stmt) != SQLITE_DONE {
-                
+        try lock.throwingMutex {
+            var values: [Any?] = []
+            for o in params {
+                values.append(o)
             }
             
-        } else {
-            // error in statement
-            debugPrint(String(cString: sqlite3_errmsg(db)))
-            Switchblade.errors[blade.instance] = true
-            throw DatabaseError.Execute(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
+            var stmt: OpaquePointer?
+            if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
+                
+                bind(stmt: stmt, params: values);
+                while sqlite3_step(stmt) != SQLITE_DONE {
+                    
+                }
+                
+            } else {
+                // error in statement
+                debugPrint(String(cString: sqlite3_errmsg(db)))
+                Switchblade.errors[blade.instance] = true
+                throw DatabaseError.Execute(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
+            }
+            
+            sqlite3_finalize(stmt)
         }
-        
-        sqlite3_finalize(stmt)
         
     }
     
     fileprivate func query(sql: String, params:[Any?]) throws -> [Data?] {
         
-        var results: [Data?] = []
-        
-        var values: [Any?] = []
-        for o in params {
-            values.append(o)
-        }
-        
-        var stmt: OpaquePointer?
-        if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
-            bind(stmt: stmt, params: values);
-            while sqlite3_step(stmt) == SQLITE_ROW {
-                
-                let columns = sqlite3_column_count(stmt)
-                if columns > 0 {
-                    var value: Data?
-                    let i = 0
-                    switch sqlite3_column_type(stmt, Int32(i)) {
-                    case SQLITE_BLOB:
-                        let d = Data(bytes: sqlite3_column_blob(stmt, Int32(i)), count: Int(sqlite3_column_bytes(stmt, Int32(i))))
-                        value = d
-                    default:
-                        value = nil
-                        break;
-                    }
-                    results.append(value)
-                }
-                
+        if let results = try lock.throwingMutex ({ () -> [Data?] in
+            
+            var results: [Data?] = []
+            
+            var values: [Any?] = []
+            for o in params {
+                values.append(o)
             }
+            
+            var stmt: OpaquePointer?
+            if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
+                bind(stmt: stmt, params: values);
+                while sqlite3_step(stmt) == SQLITE_ROW {
+                    
+                    let columns = sqlite3_column_count(stmt)
+                    if columns > 0 {
+                        var value: Data?
+                        let i = 0
+                        switch sqlite3_column_type(stmt, Int32(i)) {
+                        case SQLITE_BLOB:
+                            let d = Data(bytes: sqlite3_column_blob(stmt, Int32(i)), count: Int(sqlite3_column_bytes(stmt, Int32(i))))
+                            value = d
+                        default:
+                            value = nil
+                            break;
+                        }
+                        results.append(value)
+                    }
+                    
+                }
+            } else {
+                print(String(cString: sqlite3_errmsg(db)))
+                Switchblade.errors[blade.instance] = true
+                throw DatabaseError.Query(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
+            }
+            
+            sqlite3_finalize(stmt)
+            
+            return results
+            
+        }) {
+            return results
         } else {
-            print(String(cString: sqlite3_errmsg(db)))
-            Switchblade.errors[blade.instance] = true
-            throw DatabaseError.Query(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
+            return []
         }
-        
-        sqlite3_finalize(stmt)
-        
-        return results
         
     }
     
