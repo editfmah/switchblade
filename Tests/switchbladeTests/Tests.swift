@@ -382,5 +382,151 @@ extension switchbladeTests {
         XCTFail("failed to write one of the recordss")
     }
     
+    func testTransaction() {
+        
+        var pass = false
+        
+        
+        let db = initSQLiteDatabase()
+        db.perform {
+            let p1 = Person()
+            p1.Name = "Adrian Herridge"
+            p1.Age = 41
+            db.put(p1)
+        }.finally {
+            if let results: [Person] = db.query(keyspace: "person", parameters: [.where("age", .equals, 41)]) {
+                if results.count == 1 {
+                    if let result = results.first, result.Name == "Adrian Herridge" {
+                        pass = true
+                    }
+                }
+            }
+        }
+        
+        if !pass {
+            XCTFail("failed to write one of the recordss")
+        }
+        
+    }
+    
+    func testMultipleTransactions() {
+        
+        var pass = false
+        
+        
+        let db = initSQLiteDatabase()
+        db.perform {
+            let p1 = Person()
+            p1.Name = "Adrian Herridge"
+            p1.Age = 41
+            db.put(p1)
+        }
+        
+        db.perform {
+            let p = Person()
+            p.Name = "Neil Bostrom"
+            p.Age = 38
+            db.put(p)
+        }.finally {
+            if let results: [Person] = db.all(keyspace: "person") {
+                if results.count == 2 {
+                    pass = true
+                }
+            }
+        }
+        
+        if !pass {
+            XCTFail("failed to write one of the recordss")
+        }
+        
+    }
+    
+    func testLoopedTransactions() {
+        
+        var pass = false
+        
+        let db = initSQLiteDatabase()
+        db.perform {
+            for idx in 1...10 {
+                let p = Person()
+                p.Name = "Person \(idx)"
+                p.Age = idx
+                db.put(p)
+            }
+        }.finally {
+            if let results: [Person] = db.all(keyspace: "person") {
+                if results.count == 10 {
+                    pass = true
+                }
+            }
+        }
+        
+        if !pass {
+            XCTFail("failed to write one of the recordss")
+        }
+        
+    }
+    
+    func testTransactionsInsertDelete() {
+        
+        var pass = false
+        
+        let db = initSQLiteDatabase()
+        db.perform {
+            for idx in 1...10 {
+                let p = Person()
+                p.Name = "Person \(idx)"
+                p.Age = idx
+                db.put(p)
+            }
+        }.finally {
+            if let results: [Person] = db.all(keyspace: "person") {
+                if results.count == 0 {
+                    pass = true
+                }
+            }
+        }
+        
+        if !pass {
+            XCTFail("failed to write one of the recordss")
+        }
+        
+    }
+    
+    func testTransactionRollback() {
+        
+        var pass = false
+        
+        let db = initSQLiteDatabase()
+        db.perform {
+            for idx in 1...100 {
+                let p = Person()
+                p.Name = "Person \(idx)"
+                p.Age = idx
+                db.put(p)
+            }
+            if let results: [Person] = db.all(keyspace: "person") {
+                if results.count == 100 {
+                    pass = true
+                }
+            }
+            db.failTransaction()
+        }.success {
+            pass = false
+        }.failure {
+            pass = false
+            if let results: [Person] = db.all(keyspace: "person") {
+                if results.count == 0 {
+                    pass = true
+                }
+            }
+        }
+        
+        if !pass {
+            XCTFail("failed to write one of the recordss")
+        }
+        
+    }
+    
 }
 

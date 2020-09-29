@@ -11,6 +11,7 @@ typealias AtomicClosure = (()->())
 
 protocol Atomic {
     @discardableResult func perform(_ closure: AtomicClosure) -> AtomicPostAction
+    func failTransaction()
 }
 
 class AtomicPostAction {
@@ -41,5 +42,4 @@ class AtomicPostAction {
         closure()
     }
 }
-
 
