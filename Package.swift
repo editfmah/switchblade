@@ -16,7 +16,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/VeldsparCrypto/CSQlite.git",      .exact("1.0.8")),
-        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git",   .exact("1.3.2")),
+        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git",   .branch("master")),
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
