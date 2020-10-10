@@ -478,6 +478,7 @@ extension switchbladeTests {
                 p.Name = "Person \(idx)"
                 p.Age = idx
                 db.put(p)
+                db.remove(p)
             }
         }.finally {
             if let results: [Person] = db.all(keyspace: "person") {
