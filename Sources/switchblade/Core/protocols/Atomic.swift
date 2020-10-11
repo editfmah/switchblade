@@ -7,14 +7,14 @@
 
 import Foundation
 
-typealias AtomicClosure = (()->())
+public typealias AtomicClosure = (()->())
 
-protocol Atomic {
+public protocol Atomic {
     @discardableResult func perform(_ closure: AtomicClosure) -> AtomicPostAction
     func failTransaction()
 }
 
-class AtomicPostAction {
+public class AtomicPostAction {
     
     let blade: Switchblade!
     let succeeded: Bool!

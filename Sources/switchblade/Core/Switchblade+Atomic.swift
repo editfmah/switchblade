@@ -9,7 +9,7 @@ import Foundation
 
 extension Switchblade: Atomic {
     
-    @discardableResult func perform(_ closure: () -> ()) -> AtomicPostAction {
+    @discardableResult public func perform(_ closure: () -> ()) -> AtomicPostAction {
         var succeed = true
         if let mutex = Switchblade.locks[instance] {
             mutex.mutex {
@@ -29,7 +29,7 @@ extension Switchblade: Atomic {
         return AtomicPostAction(self, succeed)
     }
     
-    func failTransaction() {
+    public func failTransaction() {
         Switchblade.errors[instance] = true
     }
     
