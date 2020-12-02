@@ -35,7 +35,7 @@ public class Binding<T:Codable> : SwitchbladeBinding {
     private var result: T?
     private var closure: ((T?)->Void)?
     
-    init(_ switchblade: Switchblade, key: KeyType, keyspace: String? = nil,_ onChange: ((T?)->Void)? = nil) {
+    public init(_ switchblade: Switchblade, key: KeyType, keyspace: String? = nil,_ onChange: ((T?)->Void)? = nil) {
         self.blade = switchblade
         self.key = key
         self.keyspace = keyspace ?? default_keyspace
@@ -44,7 +44,7 @@ public class Binding<T:Codable> : SwitchbladeBinding {
         update(true)
     }
     
-    init(_ switchblade: Switchblade, object: T,_ onChange: ((T?)->Void)? = nil) {
+    public init(_ switchblade: Switchblade, object: T,_ onChange: ((T?)->Void)? = nil) {
         self.blade = switchblade
         if let identifiable = object as? Identifiable {
             self.key = identifiable.key
@@ -114,7 +114,7 @@ public class BindingCollection<T:Codable> : SwitchbladeBinding {
         blade.registerBinding(self)
     }
     
-    init(_ switchblade: Switchblade, keyspace: String, parameters: [param],_ onChange: (([T]?)->Void)? = nil) {
+    public init(_ switchblade: Switchblade, keyspace: String, parameters: [param],_ onChange: (([T]?)->Void)? = nil) {
         self.blade = switchblade
         self.keyspace = keyspace
         self.parameters = parameters
@@ -123,7 +123,7 @@ public class BindingCollection<T:Codable> : SwitchbladeBinding {
         update(true)
     }
     
-    init(_ switchblade: Switchblade, parameters: [param],_ onChange: (([T]?)->Void)? = nil) {
+    public init(_ switchblade: Switchblade, parameters: [param],_ onChange: (([T]?)->Void)? = nil) {
         self.blade = switchblade
         self.parameters = parameters
         self.keyspace = keyspace ?? default_keyspace
