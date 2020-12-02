@@ -529,5 +529,146 @@ extension switchbladeTests {
         
     }
     
+    func testBindingsObject() {
+        
+        let db = initSQLiteDatabase()
+        let p1 = Person()
+        var pass = false
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        db.put(p1)
+        let binding = db.bind(key: p1.key, keyspace: p1.keyspace) { (person: Person?) in
+            print("binding updated for Person object")
+            pass = true
+        }
+        if pass {
+            XCTFail("failed state in binding")
+        }
+        p1.Age = 41
+        db.put(p1)
+        
+        if !pass {
+            XCTFail("failed state in binding")
+        }
+        
+    }
+    
+    func testBindingsKeyspace() {
+        
+        let db = initSQLiteDatabase()
+        let p1 = Person()
+        var pass = false
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        db.put(p1)
+        
+        let binding = db.bind(keyspace: p1.keyspace) { (results: [Person]?) in
+            if let results = results {
+                if results.count == 2 {
+                    pass = true
+                }
+            }
+        }
+        
+        if pass {
+            XCTFail("failed state in binding")
+        }
+        
+        let p2 = Person()
+        p2.Name = "Sunjay Kalsi"
+        p2.Age = 43
+        db.put(p2)
+        
+        if !pass {
+            XCTFail("failed state in binding")
+        }
+        
+    }
+    
+    func testBindingsQuery() {
+        
+        let db = initSQLiteDatabase()
+        let p1 = Person()
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        db.put(p1)
+        
+        let binding = BindingCollection<Person>(db, keyspace: p1.keyspace, parameters: [.where("age", .equals, 40)])
+        
+        if binding.count != 1 {
+            XCTFail("failed state in binding")
+        }
+        
+        let p2 = Person()
+        p2.Name = "Sunjay Kalsi"
+        p2.Age = 40
+        db.put(p2)
+        
+        if binding.count != 2 {
+            XCTFail("failed state in binding")
+        }
+        
+    }
+    
+    func testBindingsObjectReference() {
+        
+        let db = initSQLiteDatabase()
+        let p1 = Person()
+        var pass = false
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        db.put(p1)
+        let binding = db.bind(p1) { (person: Person?) in
+            print("binding updated for Person object")
+            pass = true
+        }
+        if pass {
+            XCTFail("failed state in binding")
+        }
+        p1.Age = 41
+        db.put(p1)
+        if !pass {
+            XCTFail("failed state in binding")
+        }
+        
+    }
+    
+    func testResultFromBinding() {
+        
+        let db = initSQLiteDatabase()
+        let p1 = Person()
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        db.put(p1)
+        let binding = db.bind(p1)
+        
+        if binding.count != 1 {
+            XCTFail("failed state in binding")
+        }
+        
+        if let boundPerson: Person = binding.data(index: 0) {
+            if boundPerson.Name != "Adrian Herridge" {
+                XCTFail("failed state in binding")
+            }
+        }
+        
+        p1.Name = "Sunjay Kalsi"
+        p1.Age = 43
+        db.put(p1)
+        
+        if let boundPerson: Person = binding.data(index: 0) {
+            if boundPerson.Name != "Sunjay Kalsi" {
+                XCTFail("failed state in binding")
+            }
+        }
+        
+        if let boundPerson = binding.object {
+            if boundPerson.Name != "Sunjay Kalsi" {
+                XCTFail("failed state in binding")
+            }
+        }
+        
+    }
+    
 }
 

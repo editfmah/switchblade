@@ -13,6 +13,9 @@ public class Switchblade : SwitchbladeInterface {
     static var locks: [UUID : Mutex] = [:]
     static var errors: [UUID : Bool] = [:]
     
+    // binding registrations
+    internal var bindings: [WeakContainer] = []
+    
     public required init(provider: DataProvider, configuration: SwitchbladeConfig? = nil) throws {
         self.provider = provider
         if Switchblade.defaultProvider == nil {
@@ -32,6 +35,7 @@ public class Switchblade : SwitchbladeInterface {
         
         // now, open the connection
         try self.provider.open()
+        
     }
     
     public required init(provider: DataProvider, configuration: SwitchbladeConfig? = nil, completion: ((Bool, DataProvider, DatabaseError?) -> Void)?) {
@@ -77,6 +81,19 @@ public class Switchblade : SwitchbladeInterface {
         }
     }
  
+}
+
+internal extension Switchblade {
+    class WeakContainer {
+        weak var value : AnyObject?
+        var id: UUID = UUID()
+        init (_ value: AnyObject) {
+            self.value = value
+            if let binding = value as? SwitchbladeBinding {
+                self.id = binding.id
+            }
+        }
+    }
 }
 
 

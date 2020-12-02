@@ -13,22 +13,41 @@ extension Switchblade: SwitchbadeRemove {
     
     @discardableResult public func remove<T>(_ object: T) -> Bool where T : Identifiable {
         if let keyspaceObject = object as? KeyspaceIdentifiable {
-            return provider.delete(key: object.key.key(), keyspace: keyspaceObject.keyspace.data(using: .utf8)!)
+            if provider.delete(key: object.key.key(), keyspace: keyspaceObject.keyspace.data(using: .utf8)!) {
+                notify(key: object.key, keyspace: keyspaceObject.keyspace)
+                return true
+            }
         } else {
-            return provider.delete(key: object.key.key(), keyspace: default_keyspace)
+            if provider.delete(key: object.key.key(), keyspace: default_keyspace) {
+                notify(key: object.key, keyspace: "_default_")
+                return true
+            }
         }
+        return false
     }
     
     @discardableResult public func remove<T>(keyspace: String, _ object: T) -> Bool where T : Identifiable {
-        return provider.delete(key: object.key.key(), keyspace: keyspace.data(using: .utf8)!)
+        if provider.delete(key: object.key.key(), keyspace: keyspace.data(using: .utf8)!) {
+            notify(key: object.key, keyspace: keyspace)
+            return true
+        }
+        return false
     }
     
     @discardableResult public func remove(key: KeyType) -> Bool {
-        return provider.delete(key: key.key(), keyspace: default_keyspace)
+        if provider.delete(key: key.key(), keyspace: default_keyspace) {
+            notify(key: key, keyspace: "_default_")
+            return true
+        }
+        return false
     }
     
     @discardableResult public func remove(key: KeyType, keyspace: String) -> Bool {
-        return provider.delete(key: key.key(), keyspace: keyspace.data(using: .utf8)!)
+        if provider.delete(key: key.key(), keyspace: keyspace.data(using: .utf8)!) {
+            notify(key: key, keyspace: keyspace)
+            return true
+        }
+        return false
     }
     
 }
