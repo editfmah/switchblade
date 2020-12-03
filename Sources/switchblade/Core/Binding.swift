@@ -112,9 +112,10 @@ public class BindingCollection<T:Codable> : SwitchbladeBinding {
         self.keyspace = keyspace ?? default_keyspace
         self.closure = onChange
         blade.registerBinding(self)
+        update(true)
     }
     
-    public init(_ switchblade: Switchblade, keyspace: String, parameters: [param],_ onChange: (([T]?)->Void)? = nil) {
+    public init(_ switchblade: Switchblade, keyspace: String, parameters: [param]? = nil,_ onChange: (([T]?)->Void)? = nil) {
         self.blade = switchblade
         self.keyspace = keyspace
         self.parameters = parameters
