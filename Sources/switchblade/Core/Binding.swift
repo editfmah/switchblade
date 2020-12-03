@@ -59,6 +59,10 @@ public class Binding<T:Codable> : SwitchbladeBinding {
         update(true)
     }
     
+    public func setAction(_ onAction: ((T?)->Void)? = nil) {
+        closure = onAction
+    }
+    
     fileprivate func update(_ initial: Bool) {
         // work out which kind of update we are after Key, Keyspace, Key & Keyspace
         if let key = key, let keyspace = keyspace {
@@ -131,6 +135,10 @@ public class BindingCollection<T:Codable> : SwitchbladeBinding {
         self.closure = onChange
         blade.registerBinding(self)
         update(true)
+    }
+    
+    public func setAction(_ onAction: (([T]?)->Void)? = nil) {
+        closure = onAction
     }
     
     fileprivate func update(_ initial: Bool) {
