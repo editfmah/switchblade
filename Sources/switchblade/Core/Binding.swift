@@ -63,6 +63,14 @@ public class Binding<T:Codable> : SwitchbladeBinding {
         closure = onAction
     }
     
+    public func setKey(key: KeyType, keyspace: String? = nil) {
+        self.key = key
+        if let keyspace = keyspace {
+            self.keyspace = keyspace
+        }
+        update(false)
+    }
+    
     fileprivate func update(_ initial: Bool) {
         // work out which kind of update we are after Key, Keyspace, Key & Keyspace
         if let key = key, let keyspace = keyspace {
@@ -139,6 +147,14 @@ public class BindingCollection<T:Codable> : SwitchbladeBinding {
     
     public func setAction(_ onAction: (([T]?)->Void)? = nil) {
         closure = onAction
+    }
+    
+    public func setKeyspace(keyspace: String? = nil, parameters: [param]? = nil) {
+        self.keyspace = keyspace ?? default_keyspace
+        if parameters != nil {
+            self.parameters = parameters
+        }
+        update(false)
     }
     
     fileprivate func update(_ initial: Bool) {
