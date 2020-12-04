@@ -106,6 +106,10 @@ public class BindingCollection<T:Codable> : SwitchbladeBinding {
         return nil
     }
     
+    public var object: [T]? {
+        return result
+    }
+    
     public func notify() {
         // notification from ORM for potential update to graph
         update(false)
