@@ -11,6 +11,11 @@ fileprivate var default_keyspace = "_default_"
 
 public class Binding<T:Codable> : SwitchbladeBinding {
     
+    public func signal() {
+        // application asking for the closure to be executed
+        self.closure?(result)
+    }
+    
     func notify() {
         // notification from ORM for potential update to graph
         update(false)
@@ -94,6 +99,11 @@ public class Binding<T:Codable> : SwitchbladeBinding {
 }
 
 public class BindingCollection<T:Codable> : SwitchbladeBinding {
+    
+    public func signal() {
+        // application asking for the closure to be executed
+        self.closure?(result)
+    }
     
     public var count: Int {
         return result == nil ? 0 : result?.count ?? 0
