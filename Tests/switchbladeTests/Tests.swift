@@ -86,14 +86,11 @@ extension switchbladeTests {
                 p3.Name = "George Smith"
                 p3.Age = 28
                 if db.put(p3) {
-                    if let results: [Person] = db.all(keyspace: p1.keyspace) {
-                        if results.count == 3 {
-                            return
-                        } else {
-                            XCTFail("failed to read back the correct number of records")
-                        }
+                    let results: [Person] = db.all(keyspace: p1.keyspace)
+                    if results.count == 3 {
+                        return
                     } else {
-                        XCTFail("failed to read back the records")
+                        XCTFail("failed to read back the correct number of records")
                     }
                 }
             }
@@ -118,7 +115,7 @@ extension switchbladeTests {
                 p3.Name = "George Smith"
                 p3.Age = 28
                 if db.put(p3) {
-                    if let _ : Person = db.all(keyspace: p1.keyspace)?.first(where: { $0.Age == 41 && $0.Name == "Adrian Herridge" }) {
+                    if let _ : Person = db.all(keyspace: p1.keyspace).first(where: { $0.Age == 41 && $0.Name == "Adrian Herridge" }) {
                         return
                     } else {
                         XCTFail("failed to read back the correct records")
@@ -146,18 +143,15 @@ extension switchbladeTests {
                 p3.Name = "George Smith"
                 p3.Age = 28
                 if db.put(p3) {
-                    if let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41)]) {
-                        if results.count == 1 {
-                            if let result = results.first, result.Name == "Adrian Herridge" {
-                                return
-                            } else {
-                                XCTFail("failed to read back the correct record")
-                            }
+                    let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41)])
+                    if results.count == 1 {
+                        if let result = results.first, result.Name == "Adrian Herridge" {
+                            return
                         } else {
                             XCTFail("failed to read back the correct record")
                         }
                     } else {
-                        XCTFail("failed to read back the correct records")
+                        XCTFail("failed to read back the correct record")
                     }
                 }
             }
@@ -182,18 +176,15 @@ extension switchbladeTests {
                 p3.Name = "George Smith"
                 p3.Age = 28
                 if db.put(p3) {
-                    if let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41),.where("name", .equals, "Adrian Herridge")]) {
-                        if results.count == 1 {
-                            if let result = results.first, result.Name == "Adrian Herridge" {
-                                return
-                            } else {
-                                XCTFail("failed to read back the correct record")
-                            }
+                    let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41),.where("name", .equals, "Adrian Herridge")])
+                    if results.count == 1 {
+                        if let result = results.first, result.Name == "Adrian Herridge" {
+                            return
                         } else {
                             XCTFail("failed to read back the correct record")
                         }
                     } else {
-                        XCTFail("failed to read back the correct records")
+                        XCTFail("failed to read back the correct record")
                     }
                 }
             }
@@ -212,7 +203,7 @@ extension switchbladeTests {
         p1.Name = "Adrian Herridge"
         p1.Age = 41
         if db.put(p1) {
-            if let retrieved: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
+            if let _: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
                 
             } else {
                 XCTFail("failed to retrieve one of the records")
@@ -256,12 +247,9 @@ extension switchbladeTests {
         p1.Name = "Adrian Herridge"
         p1.Age = 41
         if db.put(p1) {
-            if let retrieved: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41)]) {
-                if retrieved.count == 1 {
-                    
-                } else {
-                    XCTFail("failed to retrieve one of the records")
-                }
+            let retrieved: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41)])
+            if retrieved.count == 1 {
+                
             } else {
                 XCTFail("failed to retrieve one of the records")
             }
@@ -288,11 +276,10 @@ extension switchbladeTests {
         p3.Age = 28
         db.put(p3)
         
-        if let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41)]) {
-            if results.count == 1 {
-                if let result = results.first, result.Name == "Adrian Herridge" {
-                    return
-                }
+        let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41)])
+        if results.count == 1 {
+            if let result = results.first, result.Name == "Adrian Herridge" {
+                return
             }
         }
         
@@ -317,10 +304,9 @@ extension switchbladeTests {
         p3.Age = 28
         db.put(p3)
         
-        if let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .greater, 30)]) {
-            if results.count == 2 {
-                return
-            }
+        let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .greater, 30)])
+        if results.count == 2 {
+            return
         }
         
         XCTFail("failed to write one of the recordss")
@@ -344,10 +330,9 @@ extension switchbladeTests {
         p3.Age = 28
         db.put(p3)
         
-        if let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .less, 40)]) {
-            if results.count == 2 {
-                return
-            }
+        let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .less, 40)])
+        if results.count == 2 {
+            return
         }
         
         XCTFail("failed to write one of the recordss")
@@ -371,11 +356,10 @@ extension switchbladeTests {
         p3.Age = 28
         db.put(p3)
         
-        if let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .isnull, nil),.where("name", .equals, "Neil Bostrom")]) {
-            if results.count == 1 {
-                if let result = results.first, result.Name == "Neil Bostrom" {
-                    return
-                }
+        let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .isnull, nil),.where("name", .equals, "Neil Bostrom")])
+        if results.count == 1 {
+            if let result = results.first, result.Name == "Neil Bostrom" {
+                return
             }
         }
         
@@ -394,11 +378,10 @@ extension switchbladeTests {
             p1.Age = 41
             db.put(p1)
         }.finally {
-            if let results: [Person] = db.query(keyspace: "person", parameters: [.where("age", .equals, 41)]) {
-                if results.count == 1 {
-                    if let result = results.first, result.Name == "Adrian Herridge" {
-                        pass = true
-                    }
+            let results: [Person] = db.query(keyspace: "person", parameters: [.where("age", .equals, 41)])
+            if results.count == 1 {
+                if let result = results.first, result.Name == "Adrian Herridge" {
+                    pass = true
                 }
             }
         }
@@ -428,10 +411,9 @@ extension switchbladeTests {
             p.Age = 38
             db.put(p)
         }.finally {
-            if let results: [Person] = db.all(keyspace: "person") {
-                if results.count == 2 {
-                    pass = true
-                }
+            let results: [Person] = db.all(keyspace: "person")
+            if results.count == 2 {
+                pass = true
             }
         }
         
@@ -454,11 +436,11 @@ extension switchbladeTests {
                 db.put(p)
             }
         }.finally {
-            if let results: [Person] = db.all(keyspace: "person") {
-                if results.count == 10 {
-                    pass = true
-                }
+            let results: [Person] = db.all(keyspace: "person")
+            if results.count == 10 {
+                pass = true
             }
+            
         }
         
         if !pass {
@@ -481,10 +463,9 @@ extension switchbladeTests {
                 db.remove(p)
             }
         }.finally {
-            if let results: [Person] = db.all(keyspace: "person") {
-                if results.count == 0 {
-                    pass = true
-                }
+            let results: [Person] = db.all(keyspace: "person")
+            if results.count == 0 {
+                pass = true
             }
         }
         
@@ -506,20 +487,18 @@ extension switchbladeTests {
                 p.Age = idx
                 db.put(p)
             }
-            if let results: [Person] = db.all(keyspace: "person") {
-                if results.count == 100 {
-                    pass = true
-                }
+            let results: [Person] = db.all(keyspace: "person")
+            if results.count == 100 {
+                pass = true
             }
             db.failTransaction()
         }.success {
             pass = false
         }.failure {
             pass = false
-            if let results: [Person] = db.all(keyspace: "person") {
-                if results.count == 0 {
-                    pass = true
-                }
+            let results: [Person] = db.all(keyspace: "person")
+            if results.count == 0 {
+                pass = true
             }
         }
         

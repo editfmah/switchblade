@@ -106,17 +106,14 @@ public class BindingCollection<T:Codable> : SwitchbladeBinding {
     }
     
     public var count: Int {
-        return result == nil ? 0 : result?.count ?? 0
+        return result.count
     }
     
-    public func data<T>(index: Int) -> T? where T : Decodable, T : Encodable {
-        if let r = result {
-            return r[index] as? T
-        }
-        return nil
+    public func data<T>(index: Int) -> T where T : Decodable, T : Encodable {
+        return result[index] as! T
     }
     
-    public var object: [T]? {
+    public var object: [T] {
         return result
     }
     
@@ -129,11 +126,11 @@ public class BindingCollection<T:Codable> : SwitchbladeBinding {
     private var blade: Switchblade
     internal var key: KeyType?
     internal var keyspace: String?
-    private var result: [T]?
-    private var closure: (([T]?)->Void)?
+    private var result: [T] = []
+    private var closure: (([T])->Void)?
     private var parameters: [param]?
     
-    init(_ switchblade: Switchblade, keyspace: String? = nil,_ onChange: (([T]?)->Void)? = nil) {
+    init(_ switchblade: Switchblade, keyspace: String? = nil,_ onChange: (([T])->Void)? = nil) {
         self.blade = switchblade
         self.keyspace = keyspace ?? default_keyspace
         self.closure = onChange
@@ -141,7 +138,7 @@ public class BindingCollection<T:Codable> : SwitchbladeBinding {
         update(true)
     }
     
-    public init(_ switchblade: Switchblade, keyspace: String, parameters: [param]? = nil,_ onChange: (([T]?)->Void)? = nil) {
+    public init(_ switchblade: Switchblade, keyspace: String, parameters: [param]? = nil,_ onChange: (([T])->Void)? = nil) {
         self.blade = switchblade
         self.keyspace = keyspace
         self.parameters = parameters
@@ -150,7 +147,7 @@ public class BindingCollection<T:Codable> : SwitchbladeBinding {
         update(true)
     }
     
-    public init(_ switchblade: Switchblade, parameters: [param],_ onChange: (([T]?)->Void)? = nil) {
+    public init(_ switchblade: Switchblade, parameters: [param],_ onChange: (([T])->Void)? = nil) {
         self.blade = switchblade
         self.parameters = parameters
         self.keyspace = keyspace ?? default_keyspace
@@ -159,7 +156,7 @@ public class BindingCollection<T:Codable> : SwitchbladeBinding {
         update(true)
     }
     
-    public func setAction(_ onAction: (([T]?)->Void)? = nil) {
+    public func setAction(_ onAction: (([T])->Void)? = nil) {
         closure = onAction
     }
     

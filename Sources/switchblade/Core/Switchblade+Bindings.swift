@@ -23,19 +23,19 @@ extension Switchblade : SwitchbadeBinder {
     }
     
     // group bindings
-    public func bind<T>(_ onChange: (([T]?) -> Void)? = nil) -> BindingCollection<T> where T : Decodable, T : Encodable {
+    public func bind<T>(_ onChange: (([T]) -> Void)? = nil) -> BindingCollection<T> where T : Decodable, T : Encodable {
         return BindingCollection<T>(self, onChange)
     }
     
-    public func bind<T>(keyspace: String, _ onChange: (([T]?) -> Void)? = nil) -> BindingCollection<T> where T : Decodable, T : Encodable {
+    public func bind<T>(keyspace: String, _ onChange: (([T]) -> Void)? = nil) -> BindingCollection<T> where T : Decodable, T : Encodable {
         return BindingCollection<T>(self, keyspace: keyspace, onChange)
     }
     
-    public func bind<T>(parameters: [param], _ onChange: (([T]?) -> Void)? = nil) -> BindingCollection<T> where T : Decodable, T : Encodable {
+    public func bind<T>(parameters: [param], _ onChange: (([T]) -> Void)? = nil) -> BindingCollection<T> where T : Decodable, T : Encodable {
         return BindingCollection<T>(self, parameters: parameters, onChange)
     }
     
-    public func bind<T>(keyspace: String, parameters: [param], _ onChange: (([T]?) -> Void)? = nil) -> BindingCollection<T> where T : Decodable, T : Encodable {
+    public func bind<T>(keyspace: String, parameters: [param], _ onChange: (([T]) -> Void)? = nil) -> BindingCollection<T> where T : Decodable, T : Encodable {
         return BindingCollection<T>(self, keyspace: keyspace, parameters: parameters, onChange)
     }
     

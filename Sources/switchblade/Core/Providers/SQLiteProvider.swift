@@ -246,7 +246,7 @@ public class SQLiteProvider: DataProvider {
     }
     
     @discardableResult
-    public func query<T>(keyspace: Data, params: [param]?) -> [T]? where T : Decodable, T : Encodable {
+    public func query<T>(keyspace: Data, params: [param]?) -> [T] where T : Decodable, T : Encodable {
         var results: [T] = []
         var whereParams: [Any?] = []
         // loop to see if there are any where conditions
@@ -340,7 +340,7 @@ public class SQLiteProvider: DataProvider {
     }
     
     @discardableResult
-    public func all<T>(keyspace: Data) -> [T]? where T : Decodable, T : Encodable {
+    public func all<T>(keyspace: Data) -> [T] where T : Decodable, T : Encodable {
         var results: [T] = []
         do {
             let data = try query(sql: "SELECT value FROM Data WHERE id IN (SELECT id FROM Records WHERE keyspace = ?);", params: [keyspace])
