@@ -22,6 +22,8 @@
 
 /* Begin PBXBuildFile section */
 		3A36710F257795770075BC1E /* Execute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A36710E257795770075BC1E /* Execute.swift */; };
+		3AA3C19C2583D05C000F489A /* Query.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA3C19B2583D05C000F489A /* Query.swift */; };
+		3AA3C1A42583D09B000F489A /* SwitchbladeQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA3C1A32583D09B000F489A /* SwitchbladeQuery.swift */; };
 		3ADAB24F2576903A001B0A07 /* Binding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADAB24E2576903A001B0A07 /* Binding.swift */; };
 		3ADAB2572576973E001B0A07 /* SwitchbladeBindable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADAB2562576973E001B0A07 /* SwitchbladeBindable.swift */; };
 		3ADAB25F2576A5C5001B0A07 /* Switchblade+Bindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADAB25E2576A5C5001B0A07 /* Switchblade+Bindings.swift */; };
@@ -166,6 +168,8 @@
 
 /* Begin PBXFileReference section */
 		3A36710E257795770075BC1E /* Execute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Execute.swift; sourceTree = "<group>"; };
+		3AA3C19B2583D05C000F489A /* Query.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Query.swift; sourceTree = "<group>"; };
+		3AA3C1A32583D09B000F489A /* SwitchbladeQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeQuery.swift; sourceTree = "<group>"; };
 		3ADAB24E2576903A001B0A07 /* Binding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Binding.swift; sourceTree = "<group>"; };
 		3ADAB2562576973E001B0A07 /* SwitchbladeBindable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeBindable.swift; sourceTree = "<group>"; };
 		3ADAB25E2576A5C5001B0A07 /* Switchblade+Bindings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Switchblade+Bindings.swift"; sourceTree = "<group>"; };
@@ -516,6 +520,8 @@
 				60FDF15A2520810B00F91A12 /* Switchblade+Atomic.swift */,
 				OBJ_16 /* protocols */,
 				3ADAB24E2576903A001B0A07 /* Binding.swift */,
+				3AA3C19B2583D05C000F489A /* Query.swift */,
+				3AA3C1A32583D09B000F489A /* SwitchbladeQuery.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -745,11 +751,13 @@
 				609B54CF251B66880045611B /* SwitchbladeConfig.swift in Sources */,
 				609B54DD251B74AE0045611B /* SwitchbladeIOProvider.swift in Sources */,
 				60FDF14625207E9000F91A12 /* Atomic.swift in Sources */,
+				3AA3C1A42583D09B000F489A /* SwitchbladeQuery.swift in Sources */,
 				OBJ_215 /* PublicEnums.swift in Sources */,
 				OBJ_216 /* Switchblade+Delete.swift in Sources */,
 				OBJ_217 /* Switchblade+Query.swift in Sources */,
 				OBJ_218 /* Switchblade+Setters.swift in Sources */,
 				3ADAB25F2576A5C5001B0A07 /* Switchblade+Bindings.swift in Sources */,
+				3AA3C19C2583D05C000F489A /* Query.swift in Sources */,
 				60FDF14D25207F2900F91A12 /* Mutex.swift in Sources */,
 				609B54E5251B74D10045611B /* SwitchbladeSyncProvider.swift in Sources */,
 				609B54ED251CDD170045611B /* SwitchbladeAtomic.swift in Sources */,

@@ -16,7 +16,6 @@ extension Switchblade : SwitchbadeRetriever {
         closure(result)
     }
     
-    
     public func get<T>(key: KeyType) -> T? where T : Decodable, T : Encodable {
         let result: T? = provider.get(key: key.key(), keyspace: default_keyspace)
         return result
