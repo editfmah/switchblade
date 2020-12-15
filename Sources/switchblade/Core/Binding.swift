@@ -25,8 +25,8 @@ public class Binding<T:Codable> : SwitchbladeBinding {
         return result == nil ? 0 : 1
     }
     
-    public func data<T>(index: Int) -> T? where T : Decodable, T : Encodable {
-        return result as? T
+    public func data(index: Int) -> T? {
+        return result
     }
     
     public var object: T? {
@@ -109,9 +109,9 @@ public class BindingCollection<T:Codable> : SwitchbladeBinding {
         return result.count
     }
     
-    public func data<T>(index: Int) -> T? where T : Decodable, T : Encodable {
+    public func data(index: Int) -> T? {
         if index < result.count {
-            return result[index] as? T
+            return result[index]
         }
         return nil
     }
