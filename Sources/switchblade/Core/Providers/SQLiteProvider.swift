@@ -65,7 +65,7 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
         return hash.sha256()
     }
     
-    func execute(sql: String, params:[Any?]) throws {
+    public func execute(sql: String, params:[Any?]) throws {
         
         try lock.throwingMutex {
             var values: [Any?] = []
@@ -143,7 +143,7 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
         
     }
     
-    func query(sql: String, parameters:[Any?]) -> [[Any?]] {
+    public func query(sql: String, parameters:[Any?]) -> [[Any?]] {
         
         var results: [[Any?]] = []
         
