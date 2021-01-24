@@ -83,6 +83,8 @@ public class Switchblade : SwitchbladeInterface {
  
 }
 
+internal let kSaltValue = "dfc0e63c6cfd433087055cea149efb1f"
+
 internal extension Switchblade {
     class WeakContainer {
         weak var value : AnyObject?

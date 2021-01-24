@@ -23,3 +23,7 @@ public protocol DataProvider {
     var blade: Switchblade! { get set }
     
 }
+
+internal protocol DataProviderPrivate {
+    @discardableResult func put(key: Data, keyspace: Data, object: Data?, queryKeys: [Data]?) -> Bool
+}

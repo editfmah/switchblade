@@ -1,6 +1,5 @@
 //
 //  SQLiteProvider.swift
-//  SwiftyShark
 //
 //  Created by Adrian Herridge on 08/05/2019.
 //
@@ -19,8 +18,8 @@ import CryptoSwift
 internal let SQLITE_STATIC = unsafeBitCast(0, to: sqlite3_destructor_type.self)
 internal let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
-public class SQLiteProvider: DataProvider {
-    
+public class SQLiteProvider: DataProvider, DataProviderPrivate {
+        
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
     fileprivate var lock = Mutex()
@@ -66,7 +65,7 @@ public class SQLiteProvider: DataProvider {
         return hash.sha256()
     }
     
-    fileprivate func execute(sql: String, params:[Any?]) throws {
+    func execute(sql: String, params:[Any?]) throws {
         
         try lock.throwingMutex {
             var values: [Any?] = []
@@ -144,6 +143,62 @@ public class SQLiteProvider: DataProvider {
         
     }
     
+    func query(sql: String, parameters:[Any?]) -> [[Any?]] {
+        
+        var results: [[Any?]] = []
+        
+        lock.mutex {
+            var values: [Any?] = []
+            for o in parameters {
+                values.append(o)
+            }
+            
+            var stmt: OpaquePointer?
+            if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
+                bind(stmt: stmt, params: values);
+                while sqlite3_step(stmt) == SQLITE_ROW {
+                    
+                    var row: [Any?] = []
+                    
+                    let columns = sqlite3_column_count(stmt)
+                    if columns > 0 {
+                        for i in 0..<columns {
+                            switch sqlite3_column_type(stmt, Int32(i)) {
+                            case SQLITE_BLOB:
+                                let d = Data(bytes: sqlite3_column_blob(stmt, Int32(i)), count: Int(sqlite3_column_bytes(stmt, Int32(i))))
+                                row.append(d)
+                            case SQLITE_INTEGER:
+                                let value = Int(sqlite3_column_int64(stmt, Int32(i)))
+                                row.append(value)
+                            case SQLITE_FLOAT:
+                                let value = Double(sqlite3_column_double(stmt, Int32(i)))
+                                row.append(value)
+                            case SQLITE_TEXT:
+                                let value = String.init(cString:sqlite3_column_text(stmt, Int32(i)))
+                                row.append(value)
+                            case SQLITE_NULL:
+                                row.append(nil)
+                            default:
+                                row.append(nil)
+                                break;
+                            }
+                        }
+                    }
+    
+                    results.append(row)
+                    
+                }
+            } else {
+                print(String(cString: sqlite3_errmsg(db)))
+                Switchblade.errors[blade.instance] = true
+            }
+            
+            sqlite3_finalize(stmt)
+        }
+        return results
+        
+    }
+    
     public func transact(_ mode: transaction) -> Bool {
         do {
             switch mode {
@@ -160,6 +215,43 @@ public class SQLiteProvider: DataProvider {
         }
     }
     
+    func put(key: Data, keyspace: Data, object: Data?, queryKeys: [Data]?) -> Bool {
+        
+            let id = makeId(key, keyspace)
+            do {
+                if config.aes256encryptionKey == nil {
+                    try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,object])
+                } else {
+                    // this data is to be stored encrypted
+                    if let encKey = config.aes256encryptionKey {
+                        let key = encKey.sha256()
+                        let iv = (encKey + Data(kSaltValue.bytes)).md5()
+                        do {
+                            let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
+                            // look at dealing with null assignment here
+                            let encryptedData = Data(try aes.encrypt(object!.bytes))
+                            try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,encryptedData])
+                        } catch {
+                            assertionFailure("encryption error: \(error)")
+                        }
+                    }
+                }
+                
+                try execute(sql: "INSERT OR REPLACE INTO Records (id,keyspace) VALUES (?,?)", params: [id,keyspace])
+                if let queryKeys = queryKeys {
+                    //QueriableData (id BLOB PRIMARY KEY, keyspace BLOB, key TEXT, value TEXT)
+                    try? execute(sql: "DELETE FROM QueryableData WHERE id = ?;", params: [id])
+                    for k in queryKeys {
+                        try? execute(sql: "INSERT OR REPLACE INTO QueryableData (recid,id,keyspace,key) VALUES (?,?,?,?);", params: [UUID().asData(),id,keyspace,k])
+                    }
+                }
+                return true
+            } catch {
+                return false
+            }
+        
+    }
+
     public func put<T>(key: Data, keyspace: Data, _ object: T) -> Bool where T : Decodable, T : Encodable {
         
         if let jsonObject = try? JSONEncoder().encode(object) {
@@ -171,7 +263,7 @@ public class SQLiteProvider: DataProvider {
                     // this data is to be stored encrypted
                     if let encKey = config.aes256encryptionKey {
                         let key = encKey.sha256()
-                        let iv = (encKey + Data("salty".bytes)).md5()
+                        let iv = (encKey + Data(kSaltValue.bytes)).md5()
                         do {
                             let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
                             let encryptedData = Data(try aes.encrypt(jsonObject.bytes))
@@ -227,7 +319,7 @@ public class SQLiteProvider: DataProvider {
             } else {
                 if let data = try query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data, let encKey = config.aes256encryptionKey {
                     let key = encKey.sha256()
-                    let iv = (encKey + Data("salty".bytes)).md5()
+                    let iv = (encKey + Data(kSaltValue.bytes)).md5()
                     do {
                         let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
                         let decryptedBytes = try aes.decrypt(objectData.bytes)
@@ -319,7 +411,7 @@ public class SQLiteProvider: DataProvider {
                     // this data is to be stored encrypted
                     if let encKey = config.aes256encryptionKey {
                         let key = encKey.sha256()
-                        let iv = (encKey + Data("salty".bytes)).md5()
+                        let iv = (encKey + Data(kSaltValue.bytes)).md5()
                         do {
                             let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
                             if let encryptedData = d {
@@ -353,7 +445,7 @@ public class SQLiteProvider: DataProvider {
                     // this data is to be stored encrypted
                     if let encKey = config.aes256encryptionKey {
                         let key = encKey.sha256()
-                        let iv = (encKey + Data("salty".bytes)).md5()
+                        let iv = (encKey + Data(kSaltValue.bytes)).md5()
                         do {
                             let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
                             if let encryptedData = d {
