@@ -15,7 +15,7 @@ let package = Package(
             targets: ["Switchblade"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/VeldsparCrypto/CSQlite.git",      .exact("1.0.8")),
+        .package(url: "https://github.com/VeldsparCrypto/CSQlite.git",      .exact("1.0.9")),
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git",   .upToNextMinor(from: "1.3.8")),
     ],
     targets: [
