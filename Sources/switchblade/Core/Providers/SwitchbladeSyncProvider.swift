@@ -9,6 +9,10 @@ import Foundation
 import Dispatch
 import CryptoSwift
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 fileprivate var kSyncedKeyspaces = "49cedefa8f974d2784f4d37d74bf737b"
 fileprivate var kOutstandingChangeIds = "f326a95fc85f4b33b4942457e642c8b5"
 fileprivate var kSyncOriginId = "7e8742b77d164903bd050c46ff2c49a0"
