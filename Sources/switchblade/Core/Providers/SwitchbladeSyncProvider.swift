@@ -5,12 +5,13 @@
 //  Created by Adrian Herridge on 23/09/2020.
 //
 
-import Foundation
 import Dispatch
 import CryptoSwift
 
 #if canImport(FoundationNetworking)
 import FoundationNetworking
+#else
+import Foundation
 #endif
 
 fileprivate var kSyncedKeyspaces = "49cedefa8f974d2784f4d37d74bf737b"
