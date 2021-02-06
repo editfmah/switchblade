@@ -7,11 +7,9 @@
 
 import Dispatch
 import CryptoSwift
-
+import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
-#else
-import Foundation
 #endif
 
 fileprivate var kSyncedKeyspaces = "49cedefa8f974d2784f4d37d74bf737b"
