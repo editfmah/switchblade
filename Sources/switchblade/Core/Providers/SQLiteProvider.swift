@@ -38,7 +38,6 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
         if db == nil {
             throw DatabaseError.Init(.UnableToCreateLocalDatabase)
         }
-        sqlite3_create_function(db, "SHA512", 1, SQLITE_ANY, nil, nil, sha512step, sha512finalize)
         _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS Data (id BLOB PRIMARY KEY, value BLOB);", params: [])
         _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS Records (id BLOB PRIMARY KEY, keyspace BLOB);", params: [])
         _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS QueryableData (recid BLOB PRIMARY KEY, id BLOB, keyspace BLOB, key TEXT, value BLOB);", params: [])

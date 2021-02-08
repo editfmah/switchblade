@@ -5,9 +5,12 @@
 //  Created by Adrian Herridge on 23/09/2020.
 //
 
-import Foundation
 import Dispatch
 import CryptoSwift
+import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 fileprivate var kSyncedKeyspaces = "49cedefa8f974d2784f4d37d74bf737b"
 fileprivate var kOutstandingChangeIds = "f326a95fc85f4b33b4942457e642c8b5"
