@@ -22,6 +22,7 @@
 
 /* Begin PBXBuildFile section */
 		3A36710F257795770075BC1E /* Execute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A36710E257795770075BC1E /* Execute.swift */; };
+		3A67881925D13724009FD1B7 /* UserDefaultsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A67881825D13724009FD1B7 /* UserDefaultsProvider.swift */; };
 		3AA3C19C2583D05C000F489A /* Query.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA3C19B2583D05C000F489A /* Query.swift */; };
 		3AA3C1A42583D09B000F489A /* SwitchbladeQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA3C1A32583D09B000F489A /* SwitchbladeQuery.swift */; };
 		3ADAB24F2576903A001B0A07 /* Binding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADAB24E2576903A001B0A07 /* Binding.swift */; };
@@ -168,6 +169,7 @@
 
 /* Begin PBXFileReference section */
 		3A36710E257795770075BC1E /* Execute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Execute.swift; sourceTree = "<group>"; };
+		3A67881825D13724009FD1B7 /* UserDefaultsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaultsProvider.swift; sourceTree = "<group>"; };
 		3AA3C19B2583D05C000F489A /* Query.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Query.swift; sourceTree = "<group>"; };
 		3AA3C1A32583D09B000F489A /* SwitchbladeQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeQuery.swift; sourceTree = "<group>"; };
 		3ADAB24E2576903A001B0A07 /* Binding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Binding.swift; sourceTree = "<group>"; };
@@ -317,6 +319,7 @@
 				OBJ_11 /* SQLiteProvider.swift */,
 				609B54DC251B74AE0045611B /* SwitchbladeIOProvider.swift */,
 				609B54E4251B74D10045611B /* SwitchbladeSyncProvider.swift */,
+				3A67881825D13724009FD1B7 /* UserDefaultsProvider.swift */,
 			);
 			path = Providers;
 			sourceTree = "<group>";
@@ -749,6 +752,7 @@
 				OBJ_213 /* Errors.swift in Sources */,
 				OBJ_214 /* SQLiteProvider.swift in Sources */,
 				609B54CF251B66880045611B /* SwitchbladeConfig.swift in Sources */,
+				3A67881925D13724009FD1B7 /* UserDefaultsProvider.swift in Sources */,
 				609B54DD251B74AE0045611B /* SwitchbladeIOProvider.swift in Sources */,
 				60FDF14625207E9000F91A12 /* Atomic.swift in Sources */,
 				3AA3C1A42583D09B000F489A /* SwitchbladeQuery.swift in Sources */,
