@@ -61,7 +61,7 @@ public class UserDefaultsProvider: DataProvider, DataProviderPrivate {
                 }
             }
         }
-        return false
+        return true
     }
     
     func put(key: Data, keyspace: Data, object: Data?, queryKeys: [Data]?) -> Bool {

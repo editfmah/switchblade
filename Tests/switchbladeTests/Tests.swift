@@ -649,5 +649,29 @@ extension switchbladeTests {
         
     }
     
+    func testReadWriteFromUserDefaults() {
+        
+        let db = try! Switchblade(provider: UserDefaultsProvider())
+        
+        let p1 = Person()
+        p1.Name = "Sunjay Kalsi"
+        p1.Age = 43
+        db.put(p1)
+        
+        if let p2: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
+            
+        } else {
+            XCTFail("failed to get object from provider")
+        }
+        
+        let db2 = try! Switchblade(provider: UserDefaultsProvider())
+        if let p2: Person = db2.get(key: p1.key, keyspace: p1.keyspace) {
+            print("retrieved record for '\(p2.Name ?? "")'")
+        } else {
+            XCTFail("failed to get object from provider")
+        }
+        
+    }
+    
 }
 
