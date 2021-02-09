@@ -658,7 +658,7 @@ extension switchbladeTests {
         p1.Age = 43
         db.put(p1)
         
-        if let p2: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
+        if let _: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
             
         } else {
             XCTFail("failed to get object from provider")

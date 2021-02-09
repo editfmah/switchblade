@@ -5,6 +5,8 @@
 //  Created by Adrian Herridge on 08/02/2021.
 //
 
+#if canImport(Foundation) && !os(Linux)
+
 import Foundation
 import Dispatch
 import CryptoSwift
@@ -134,3 +136,4 @@ public class UserDefaultsProvider: DataProvider, DataProviderPrivate {
     
 }
 
+#endif
