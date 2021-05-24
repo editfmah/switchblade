@@ -19,5 +19,5 @@ public protocol SwitchbadeRetriever {
     @discardableResult func all<T:Codable>(keyspace: String) -> [T]
     @discardableResult func query<T:Codable>(parameters:[param]) -> [T]
     @discardableResult func query<T:Codable>(keyspace: String, parameters:[param]) -> [T]
-    
+    @discardableResult func get<T:Codable>(_ compositeKeys: [CompositeComponent]) -> T?
 }

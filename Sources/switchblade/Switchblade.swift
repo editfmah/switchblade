@@ -97,6 +97,3 @@ internal extension Switchblade {
         }
     }
 }
-
-
-

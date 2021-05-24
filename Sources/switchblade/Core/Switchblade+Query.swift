@@ -51,6 +51,12 @@ extension Switchblade : SwitchbadeRetriever {
         return closure(result)
     }
     
+    public func get<T>(_ compositeKeys: [CompositeComponent]) -> T? where T : Decodable, T : Encodable {
+        let key = makeCompositeKey(compositeKeys)
+        let result: T? = provider.get(key: key.key(), keyspace: default_keyspace)
+        return result
+    }
+    
     public func get<T>(key: KeyType, keyspace: String, _ closure: (T?) -> T?) -> T? where T : Decodable, T : Encodable {
         let result: T? = provider.get(key: key.key(), keyspace: keyspace.data(using: .utf8)!)
         return closure(result)

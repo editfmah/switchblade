@@ -673,5 +673,54 @@ extension switchbladeTests {
         
     }
     
+    func testPersistObjectCompositeKey() {
+        
+        let db = initSQLiteDatabase()
+        
+        let p1 = Person()
+        let p2 = Person()
+        let p3 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        if db.put(["ad",1,"testing123"],p1) {
+            p2.Name = "Neil Bostrom"
+            p2.Age = 37
+            if db.put(["bozzer",2,"testing123"],p2) {
+                p3.Name = "George Smith"
+                p3.Age = 28
+                if db.put(["george",3,"testing123"],p3) {
+                    return
+                }
+            }
+        }
+        
+        XCTFail("failed to write one of the records")
+        
+    }
+    
+    func testPersistQueryObjectCompositeKey() {
+        
+        let db = initSQLiteDatabase()
+        
+        let p1 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        if db.put(["ad",1,123,"test",p1.PersonId],p1) {
+            if let retrieved: Person = db.get(["ad",1,123,"test",p1.PersonId]) {
+                print("retrieved item with id \(retrieved.PersonId)")
+                if retrieved.PersonId == p1.PersonId {
+                    return
+                }
+            } else {
+                XCTFail("failed to retrieve object")
+            }
+        }
+        
+        XCTFail("failed to write one of the records")
+        
+    }
+    
 }
 

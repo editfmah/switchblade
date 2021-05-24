@@ -56,5 +56,14 @@ extension Switchblade: SwitchbadePutter {
         }
         return false
     }
+    
+    @discardableResult public func put<T>(_ compositeKeys: [CompositeComponent], _ object: T) -> Bool where T : Decodable, T : Encodable {
+        let key = makeCompositeKey(compositeKeys)
+        if provider.put(key: key.key(), keyspace: default_keyspace, object) {
+            notify(key: key, keyspace: "_default_")
+            return true
+        }
+        return false
+    }
 
 }

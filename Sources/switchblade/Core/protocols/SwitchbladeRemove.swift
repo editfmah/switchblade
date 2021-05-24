@@ -12,4 +12,5 @@ public protocol SwitchbadeRemove {
     @discardableResult func remove<T:Identifiable>(keyspace: String, _ object: T) -> Bool
     @discardableResult func remove(key: KeyType) -> Bool
     @discardableResult func remove(key: KeyType, keyspace: String) -> Bool
+    @discardableResult func remove(_ compositeKeys: [CompositeComponent]) -> Bool
 }

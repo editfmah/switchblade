@@ -50,4 +50,13 @@ extension Switchblade: SwitchbadeRemove {
         return false
     }
     
+    @discardableResult public func remove(_ compositeKeys: [CompositeComponent]) -> Bool {
+        let key = makeCompositeKey(compositeKeys)
+        if provider.delete(key: key.data(using: .utf8)!, keyspace: default_keyspace) {
+            notify(key: key, keyspace: "_default_")
+            return true
+        }
+        return false
+    }
+    
 }
