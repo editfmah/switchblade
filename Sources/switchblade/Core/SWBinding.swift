@@ -9,7 +9,7 @@ import Foundation
 
 fileprivate var default_keyspace = "_default_"
 
-public class Binding<T:Codable> : SwitchbladeBinding {
+public class SWBinding<T:Codable> : SwitchbladeBinding {
     
     public func signal() {
         // application asking for the closure to be executed
@@ -98,7 +98,7 @@ public class Binding<T:Codable> : SwitchbladeBinding {
     }
 }
 
-public class BindingCollection<T:Codable> : SwitchbladeBinding {
+public class SWBindingCollection<T:Codable> : SwitchbladeBinding {
     
     public func signal() {
         // application asking for the closure to be executed

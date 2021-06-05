@@ -10,33 +10,33 @@ import Foundation
 extension Switchblade : SwitchbadeBinder {
     
     // object getters/updaters
-    public func bind<T>(key: KeyType,_ onChange: ((T?)->Void)? = nil) -> Binding<T> where T : Decodable, T : Encodable {
-        return Binding<T>(self, key: key, onChange)
+    public func bind<T>(key: KeyType,_ onChange: ((T?)->Void)? = nil) -> SWBinding<T> where T : Decodable, T : Encodable {
+        return SWBinding<T>(self, key: key, onChange)
     }
     
-    public func bind<T>(_ object: T, _ onChange: ((T?) -> Void)? = nil) -> Binding<T> where T : Decodable, T : Encodable {
-        return Binding<T>(self, object: object, onChange)
+    public func bind<T>(_ object: T, _ onChange: ((T?) -> Void)? = nil) -> SWBinding<T> where T : Decodable, T : Encodable {
+        return SWBinding<T>(self, object: object, onChange)
     }
     
-    public func bind<T>(key: KeyType, keyspace: String,_ onChange: ((T?)->Void)? = nil) -> Binding<T> where T : Decodable, T : Encodable {
-        return Binding<T>(self, key: key, keyspace: keyspace, onChange)
+    public func bind<T>(key: KeyType, keyspace: String,_ onChange: ((T?)->Void)? = nil) -> SWBinding<T> where T : Decodable, T : Encodable {
+        return SWBinding<T>(self, key: key, keyspace: keyspace, onChange)
     }
     
     // group bindings
-    public func bind<T>(_ onChange: (([T]) -> Void)? = nil) -> BindingCollection<T> where T : Decodable, T : Encodable {
-        return BindingCollection<T>(self, onChange)
+    public func bind<T>(_ onChange: (([T]) -> Void)? = nil) -> SWBindingCollection<T> where T : Decodable, T : Encodable {
+        return SWBindingCollection<T>(self, onChange)
     }
     
-    public func bind<T>(keyspace: String, _ onChange: (([T]) -> Void)? = nil) -> BindingCollection<T> where T : Decodable, T : Encodable {
-        return BindingCollection<T>(self, keyspace: keyspace, onChange)
+    public func bind<T>(keyspace: String, _ onChange: (([T]) -> Void)? = nil) -> SWBindingCollection<T> where T : Decodable, T : Encodable {
+        return SWBindingCollection<T>(self, keyspace: keyspace, onChange)
     }
     
-    public func bind<T>(parameters: [param], _ onChange: (([T]) -> Void)? = nil) -> BindingCollection<T> where T : Decodable, T : Encodable {
-        return BindingCollection<T>(self, parameters: parameters, onChange)
+    public func bind<T>(parameters: [param], _ onChange: (([T]) -> Void)? = nil) -> SWBindingCollection<T> where T : Decodable, T : Encodable {
+        return SWBindingCollection<T>(self, parameters: parameters, onChange)
     }
     
-    public func bind<T>(keyspace: String, parameters: [param], _ onChange: (([T]) -> Void)? = nil) -> BindingCollection<T> where T : Decodable, T : Encodable {
-        return BindingCollection<T>(self, keyspace: keyspace, parameters: parameters, onChange)
+    public func bind<T>(keyspace: String, parameters: [param], _ onChange: (([T]) -> Void)? = nil) -> SWBindingCollection<T> where T : Decodable, T : Encodable {
+        return SWBindingCollection<T>(self, keyspace: keyspace, parameters: parameters, onChange)
     }
     
     // notifiers

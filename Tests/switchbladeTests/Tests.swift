@@ -572,7 +572,7 @@ extension switchbladeTests {
         p1.Age = 40
         db.put(p1)
         
-        let binding = BindingCollection<Person>(db, keyspace: p1.keyspace, parameters: [.where("age", .equals, 40)])
+        let binding = SWBindingCollection<Person>(db, keyspace: p1.keyspace, parameters: [.where("age", .equals, 40)])
         
         if binding.count != 1 {
             XCTFail("failed state in binding")
