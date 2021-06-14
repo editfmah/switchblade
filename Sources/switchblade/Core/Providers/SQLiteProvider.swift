@@ -335,6 +335,12 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
             debugPrint("SQLiteProvider Error:  Failed to decode stored object into type: \(T.self)")
             debugPrint("Error:")
             debugPrint(error)
+            if let data = try? query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data, let body = String(data: objectData, encoding: .utf8) {
+                
+                debugPrint("Object data:")
+                debugPrint(body)
+                
+            }
         }
         return nil
     }
