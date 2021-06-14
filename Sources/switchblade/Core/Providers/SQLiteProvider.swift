@@ -331,7 +331,9 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
                 }
             }
         } catch {
-            
+            debugPrint("SQLiteProvider Error:  Failed to decode stored object into type: \(T.self)")
+            debugPrint("Error:")
+            debugPrint(error)
         }
         return nil
     }
