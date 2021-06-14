@@ -312,7 +312,8 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
         let id = makeId(key, keyspace)
         do {
             if config.aes256encryptionKey == nil {
-                if let data = try query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data, let object = try? decoder.decode(T.self, from: objectData) {
+                if let data = try query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data {
+                    let object = try decoder.decode(T.self, from: objectData)
                     return object
                 }
             } else {
