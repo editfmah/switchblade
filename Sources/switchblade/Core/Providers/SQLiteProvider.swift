@@ -441,13 +441,13 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
     
     @discardableResult
     public func all<T>(keyspace: Data) -> [T] where T : Decodable, T : Encodable {
-        var results: [T] = []
         do {
             let data = try query(sql: "SELECT value FROM Data WHERE id IN (SELECT id FROM Records WHERE keyspace = ?);", params: [keyspace])
+            var aggregation: [Data] = []
             for d in data {
                 if config.aes256encryptionKey == nil {
-                    if let objectData = d, let object = try? decoder.decode(T.self, from: objectData) {
-                        results.append(object)
+                    if let objectData = d {
+                        aggregation.append(objectData)
                     }
                 } else {
                     // this data is to be stored encrypted
@@ -458,8 +458,7 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
                             let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
                             if let encryptedData = d {
                                 let objectData = try aes.decrypt(encryptedData.bytes)
-                                let object = try decoder.decode(T.self, from: Data(objectData))
-                                results.append(object)
+                                aggregation.append(Data(objectData))
                             }
                         } catch {
                             print("encryption error: \(error)")
@@ -467,7 +466,23 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
                     }
                 }
             }
-            return results
+            let opener = "[".data(using: .utf8)!
+            let closer = "]".data(using: .utf8)!
+            let separater = ",".data(using: .utf8)!
+            var fullData = opener
+            fullData.append(contentsOf: aggregation.joined(separator: separater))
+            fullData.append(closer)
+            if let results = try? JSONDecoder().decode([T].self, from: fullData) {
+                return results
+            } else {
+                var results: [T] = []
+                for v in aggregation {
+                    if let object = try? JSONDecoder().decode(T.self, from: v) {
+                        results.append(object)
+                    }
+                }
+                return results
+            }
         } catch  {
             return []
         }
