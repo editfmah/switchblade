@@ -22,12 +22,7 @@ func initSQLiteDatabase(_ config: SwitchbladeConfig? = nil) -> Switchblade {
 }
 
 let postgresDB = Switchblade(provider:
-                                PostgresProvider(
-                                    host: "",
-                                    un: "",
-                                    pw: "",
-                                    database: "test"
-                                ), configuration: nil) { (success, provider, error) in
+                                PostgresProvider(connectionString: ""), configuration: nil) { (success, provider, error) in
             XCTAssert(error == nil, "failed to initialiase")
         }
 
@@ -802,6 +797,35 @@ extension switchbladeTests {
         if db.put(p1) {
             if let retrieved: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
                 print("retrieved item with id \(retrieved.PersonId)")
+                return
+            } else {
+                XCTFail("failed to retrieve object")
+            }
+        }
+        
+        XCTFail("failed to write one of the records")
+        
+    }
+    
+    func testPersistQueryObjectModifyPostgres() {
+        
+        let db = initPostgresDatabase()
+        
+        let p1 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        if db.put(p1) {
+            if let retrieved: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
+                print("retrieved item with id \(retrieved.PersonId)")
+                retrieved.Age = 42
+                db.put(retrieved)
+                if let retrieved2: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
+                    print("retrieved item with id \(retrieved2.PersonId)")
+                    if retrieved2.Age == 42 { return }
+                } else {
+                    XCTFail("failed to retrieve object")
+                }
                 return
             } else {
                 XCTFail("failed to retrieve object")

@@ -6,43 +6,44 @@
 //
 
 import Foundation
-import PostgresClientKit
 
 import Dispatch
 import CryptoSwift
+import PostgresKit
 
 public class PostgresProvider: DataProvider, DataProviderPrivate {
     
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
     
-    fileprivate var database: String
-    fileprivate var host: String
-    fileprivate var username: String
-    fileprivate var password: String
+    fileprivate var connectionString: String!
     
-    fileprivate var connection: PostgresClientKit.Connection?
+    fileprivate var db: PostgresConnectionSource!
     
     let decoder: JSONDecoder = JSONDecoder()
     
-    public init(host: String, un: String, pw: String, database: String)  {
-        self.host = host
-        self.username = un
-        self.password = pw
-        self.database = database
+    var eventLoop: EventLoop { self.eventLoopGroup.next() }
+    var eventLoopGroup: EventLoopGroup!
+    var pool: EventLoopGroupConnectionPool<PostgresConnectionSource>!
+    
+    public init(connectionString: String)  {
+        
+        self.connectionString = connectionString
+        
     }
     
     public func open() throws {
         
-        var configuration = PostgresClientKit.ConnectionConfiguration()
-        configuration.host = self.host
-        configuration.database = self.database
-        configuration.user = self.username
-        configuration.credential = .md5Password(password: self.password)
-        configuration.port = 25060
-        configuration.ssl = true
+        var configuration = PostgresConfiguration(url: self.connectionString)
+        configuration!.tlsConfiguration = .forClient(certificateVerification: .none)
+        self.eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 2)
         
-        self.connection = try PostgresClientKit.Connection(configuration: configuration)
+        self.db = PostgresConnectionSource(configuration: configuration!)
+        self.pool = EventLoopGroupConnectionPool(
+            source: db,
+            maxConnectionsPerEventLoop: 2,
+            on: self.eventLoopGroup
+        )
         
         try execute(sql: "CREATE TABLE IF NOT EXISTS Data (id bytea PRIMARY KEY, value bytea);", params: [])
         try execute(sql: "CREATE TABLE IF NOT EXISTS Records (id bytea PRIMARY KEY, keyspace bytea);", params: [])
@@ -51,7 +52,7 @@ public class PostgresProvider: DataProvider, DataProviderPrivate {
     }
     
     public func close() throws {
-        connection?.close()
+        pool.shutdown()
     }
     
     fileprivate func makeId(_ key: Data,_ keyspace: Data) -> Data {
@@ -72,24 +73,24 @@ public class PostgresProvider: DataProvider, DataProviderPrivate {
     
     public func execute(sql: String, params:[Any?]) throws {
         
-        var values: [PostgresValueConvertible?] = []
-        for o in params {
-            if let value = o as? PostgresValueConvertible {
-                values.append(value)
-            } else if let value = o as? Data {
-                let postgresData = PostgresByteA(data: value)
-                values.append(postgresData)
+        var values: [PostgresData] = []
+        for p in params {
+            if let p = p {
+                if let value = p as? Data {
+                    values.append(PostgresData(bytes: value))
+                } else {
+                    values.append(PostgresData.null)
+                }
             } else {
-                values.append(nil)
+                values.append(PostgresData.null)
             }
         }
         
         do {
-            let statement = try connection!.prepareStatement(text: sql)
-            defer { statement.close() }
             
-            let cursor = try statement.execute(parameterValues: values)
-            defer { cursor.close() }
+            _ = try pool.withConnection { conn in
+                return conn.query(sql, values)
+            }.wait()
             
         } catch {
             print(error)
@@ -103,29 +104,31 @@ public class PostgresProvider: DataProvider, DataProviderPrivate {
         
         var results: [Data?] = []
         
-        var values: [PostgresValueConvertible?] = []
-        for o in params {
-            if let value = o as? PostgresValueConvertible {
-                values.append(value)
-            } else if let value = o as? Data {
-                let postgresData = PostgresByteA(data: value)
-                values.append(postgresData)
+        var values: [PostgresData] = []
+        for p in params {
+            if let p = p {
+                if let value = p as? Data {
+                    values.append(PostgresData(bytes: value))
+                } else {
+                    values.append(PostgresData.null)
+                }
             } else {
-                values.append(nil)
+                values.append(PostgresData.null)
             }
         }
         
         do {
-            let statement = try connection!.prepareStatement(text: sql)
-            defer { statement.close() }
             
-            let cursor = try statement.execute(parameterValues: values)
-            defer { cursor.close() }
+            let rows = try pool.withConnection { conn in
+                return conn.query(sql, values)
+            }.wait()
             
-            for row in cursor {
-                let columns = try row.get().columns
-                let data = try columns[0].optionalByteA()?.data
-                results.append(data)
+            for r in rows {
+                if let d = r.column("value")?.bytes {
+                    results.append(Data(d))
+                } else {
+                    results.append(nil)
+                }
             }
             
         } catch {

@@ -26,6 +26,7 @@
 		3A70D3F82719C795000211F4 /* PostgresProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A70D3F72719C795000211F4 /* PostgresProvider.swift */; };
 		3A70D3F92719C795000211F4 /* PostgresProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A70D3F72719C795000211F4 /* PostgresProvider.swift */; };
 		3A70D3FA2719C90F000211F4 /* PostgresProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A70D3F72719C795000211F4 /* PostgresProvider.swift */; };
+		3A70D3FC271BC4DC000211F4 /* PostgresTerminalClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A70D3FB271BC4DC000211F4 /* PostgresTerminalClient.swift */; };
 		3AA3C19C2583D05C000F489A /* Query.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA3C19B2583D05C000F489A /* Query.swift */; };
 		3AA3C1A42583D09B000F489A /* SwitchbladeQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA3C1A32583D09B000F489A /* SwitchbladeQuery.swift */; };
 		3ABDB1DF265B676100CC79C9 /* CompositeKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ABDB1DE265B676100CC79C9 /* CompositeKey.swift */; };
@@ -175,6 +176,7 @@
 		3A36710E257795770075BC1E /* Execute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Execute.swift; sourceTree = "<group>"; };
 		3A67881825D13724009FD1B7 /* UserDefaultsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaultsProvider.swift; sourceTree = "<group>"; };
 		3A70D3F72719C795000211F4 /* PostgresProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PostgresProvider.swift; sourceTree = "<group>"; };
+		3A70D3FB271BC4DC000211F4 /* PostgresTerminalClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostgresTerminalClient.swift; sourceTree = "<group>"; };
 		3AA3C19B2583D05C000F489A /* Query.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Query.swift; sourceTree = "<group>"; };
 		3AA3C1A32583D09B000F489A /* SwitchbladeQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchbladeQuery.swift; sourceTree = "<group>"; };
 		3ABDB1DE265B676100CC79C9 /* CompositeKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositeKey.swift; sourceTree = "<group>"; };
@@ -327,6 +329,7 @@
 				609B54DC251B74AE0045611B /* SwitchbladeIOProvider.swift */,
 				609B54E4251B74D10045611B /* SwitchbladeSyncProvider.swift */,
 				3A67881825D13724009FD1B7 /* UserDefaultsProvider.swift */,
+				3A70D3FB271BC4DC000211F4 /* PostgresTerminalClient.swift */,
 			);
 			path = Providers;
 			sourceTree = "<group>";
@@ -766,6 +769,7 @@
 				3AA3C1A42583D09B000F489A /* SwitchbladeQuery.swift in Sources */,
 				OBJ_215 /* PublicEnums.swift in Sources */,
 				3A70D3F82719C795000211F4 /* PostgresProvider.swift in Sources */,
+				3A70D3FC271BC4DC000211F4 /* PostgresTerminalClient.swift in Sources */,
 				OBJ_216 /* Switchblade+Delete.swift in Sources */,
 				OBJ_217 /* Switchblade+Query.swift in Sources */,
 				OBJ_218 /* Switchblade+Setters.swift in Sources */,
