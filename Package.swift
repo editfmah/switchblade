@@ -17,17 +17,18 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/VeldsparCrypto/CSQlite.git",      .exact("1.0.9")),
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git",   .upToNextMinor(from: "1.3.8")),
+        .package(url: "https://github.com/codewinsdotcom/PostgresClientKit", from: "1.0.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages which this package depends on.
         .target(
             name: "Switchblade",
-            dependencies: ["CryptoSwift"],
+            dependencies: ["CryptoSwift","PostgresClientKit"],
             path: "./Sources/switchblade"),
         .testTarget(
             name: "SwitchbladeTests",
-            dependencies: ["Switchblade"],
+            dependencies: ["Switchblade","PostgresClientKit"],
             path: "./Tests/switchbladeTests"),
     ]
 )
