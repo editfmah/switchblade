@@ -6,12 +6,7 @@
 
 import Foundation
 
-#if os(Linux)
-import CSQLiteLinux
-#else
-import CSQLiteDarwin
-#endif
-
+import CSQLite
 import Dispatch
 import CryptoSwift
 
