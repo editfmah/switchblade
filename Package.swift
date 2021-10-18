@@ -15,16 +15,19 @@ let package = Package(
             targets: ["Switchblade"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/VeldsparCrypto/CSQlite.git",      .branch("master")),
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git",   .upToNextMinor(from: "1.3.8")),
         .package(url: "https://github.com/vapor/postgres-kit.git", .exact("2.3.3"))
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages which this package depends on.
+        .systemLibrary(
+                    name: "CSQLite",
+                    path: "./Sources/CSQLite",
+                    providers: [.apt(["libsqlite3-dev"])]),
         .target(
             name: "Switchblade",
-            dependencies: ["CryptoSwift",.product(name: "PostgresKit", package: "postgres-kit")],
+            dependencies: ["CSQLite","CryptoSwift",.product(name: "PostgresKit", package: "postgres-kit")],
             path: "./Sources/switchblade"),
         .testTarget(
             name: "SwitchbladeTests",
