@@ -7,6 +7,8 @@
 
 import Foundation
 
+#if os(Linux) || os(macOS)
+
 import Dispatch
 import CryptoSwift
 import PostgresKit
@@ -430,3 +432,4 @@ public class PostgresProvider: DataProvider, DataProviderPrivate {
     }
     
 }
+#endif

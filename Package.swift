@@ -27,7 +27,7 @@ let package = Package(
                     providers: [.apt(["libsqlite3-dev"])]),
         .target(
             name: "Switchblade",
-            dependencies: ["CSQLite","CryptoSwift",.product(name: "PostgresKit", package: "postgres-kit")],
+            dependencies: ["CSQLite","CryptoSwift",.product(name: "PostgresKit", package: "postgres-kit", condition: .when(platforms: [.linux,.macOS]))],
             path: "./Sources/switchblade"),
         .testTarget(
             name: "SwitchbladeTests",
