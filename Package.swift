@@ -2,7 +2,7 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
-
+#if os(OSX) || os(Linux)
 let package = Package(
     name: "Switchblade",
     platforms: [
@@ -35,3 +35,4 @@ let package = Package(
             path: "./Tests/switchbladeTests"),
     ]
 )
+#endif
