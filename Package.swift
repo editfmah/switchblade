@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "Switchblade",
     platforms: [
-        .macOS(.v10_15)
+        .macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v3)
     ],
     products: [
         // Products define the executables and libraries produced by a package, and make them visible to other packages.
@@ -32,5 +32,6 @@ let package = Package(
             name: "SwitchbladeTests",
             dependencies: ["Switchblade"],
             path: "./Tests/switchbladeTests"),
-    ]
+    ],
+    swiftLanguageVersions: [.v5]
 )
