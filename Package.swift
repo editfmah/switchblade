@@ -4,9 +4,11 @@
 import PackageDescription
 let package = Package(
     name: "Switchblade",
+#if os(macOS) || os(Linux)
     platforms: [
-        .macOS(.v10_15), .iOS(.v13), .tvOS(.v13), .watchOS(.v3)
+        .macOS(.v10_15)
     ],
+#endif
     products: [
         // Products define the executables and libraries produced by a package, and make them visible to other packages.
         .library(
