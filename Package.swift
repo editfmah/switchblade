@@ -16,7 +16,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git",   .upToNextMinor(from: "1.3.8")),
-        .package(url: "https://github.com/vapor/postgres-kit.git", .exact("2.3.3"))
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
@@ -27,7 +26,7 @@ let package = Package(
                     providers: [.apt(["libsqlite3-dev"])]),
         .target(
             name: "Switchblade",
-            dependencies: ["CSQLite","CryptoSwift",.product(name: "PostgresKit", package: "postgres-kit", condition: .when(platforms: [.linux,.macOS]))],
+            dependencies: ["CSQLite","CryptoSwift"],
             path: "./Sources/switchblade"),
         .testTarget(
             name: "SwitchbladeTests",
