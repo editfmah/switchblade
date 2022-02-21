@@ -114,7 +114,7 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
                 
                 while true {
                     let result = sqlite3_step(stmt)
-                    if result == SQLITE_OK {
+                    if result == SQLITE_OK || result == SQLITE_DONE {
                         // everything was fine
                         break
                     } else if result == SQLITE_MISUSE {
