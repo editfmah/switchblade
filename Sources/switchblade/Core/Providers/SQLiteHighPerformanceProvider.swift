@@ -111,8 +111,22 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
             if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
                 
                 bind(stmt: stmt, params: values);
-                while sqlite3_step(stmt) != SQLITE_DONE {
-                    
+                
+                while true {
+                    let result = sqlite3_step(stmt)
+                    if result == SQLITE_OK {
+                        // everything was fine
+                        break
+                    } else if result == SQLITE_MISUSE {
+                        // urgh, fail hard
+                        assertionFailure("Switchblade internal error: SQLITE_MISUSE")
+                        break
+                    } else if result == SQLITE_BUSY {
+                        Thread.sleep(forTimeInterval: 0.005)
+                        sqlite3_reset(stmt)
+                    } else {
+                        assertionFailure("Switchblade internal error: SQLITE error \(result)")
+                    }
                 }
                 
             } else {
