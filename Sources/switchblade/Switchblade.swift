@@ -83,6 +83,23 @@ public class Switchblade : SwitchbladeInterface {
  
 }
 
+public enum SwitchbladeLogDriverLogType {
+    case put
+    case delete
+}
+
+public class SwitchbladeLogDriver {
+    
+    public init(filename: String, atomic: Bool) {
+        
+    }
+    
+    public func log(type: SwitchbladeLogDriverLogType, key: Data, keyspace: Data, object: Data?) {
+        
+    }
+    
+}
+
 internal let kSaltValue = "dfc0e63c6cfd433087055cea149efb1f"
 
 internal extension Switchblade {

@@ -1,7 +1,8 @@
 //
-//  SQLiteProvider.swift
+//  SQLiteHighPerformanceProvider.swift
+//  
 //
-//  Created by Adrian Herridge on 08/05/2019.
+//  Created by Adrian Herridge on 21/02/2022.
 //
 
 import Foundation
@@ -13,11 +14,13 @@ import CryptoSwift
 fileprivate let SQLITE_STATIC = unsafeBitCast(0, to: sqlite3_destructor_type.self)
 fileprivate let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
-public class SQLiteProvider: DataProvider, DataProviderPrivate {
+public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
         
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
-    fileprivate var lock = Mutex()
+    fileprivate var schemalock = Mutex()
+    fileprivate var schemaseen: [Data] = []
+    fileprivate var schemalocks: [Data:Mutex] = [:]
     
     var db: OpaquePointer?
     private var p: String?
@@ -35,21 +38,49 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
             throw DatabaseError.Init(.UnableToCreateLocalDatabase)
         }
         
-        // tables
-        _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS Data (id BLOB PRIMARY KEY, value BLOB);", params: [])
-        _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS Records (id BLOB PRIMARY KEY, keyspace BLOB);", params: [])
-        _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS QueryableData (recid BLOB PRIMARY KEY, id BLOB, keyspace BLOB, key TEXT, value BLOB);", params: [])
-        
-        // indexes
-        _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_records_keyspace ON Records  (keyspace);", params: [])
-        _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_qd_id ON QueryableData (id);", params: [])
-        _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_qd_keyspace ON QueryableData (keyspace, key);", params: [])
-        
     }
     
     public func close() throws {
         sqlite3_close(db)
         db = nil;
+    }
+    
+    fileprivate func obtainLock(keyspace: Data) -> Mutex {
+        
+        var lock: Mutex?
+        
+        schemalock.mutex {
+            lock = schemalocks[keyspace]
+        }
+        
+        // deliberately fragile to promote correct order of execution
+        return lock!
+        
+    }
+    
+    fileprivate func makeTableNames(keyspace: Data) -> (data: String, records: String) {
+        
+        let names: (data: String, records: String) = ("data_\(keyspace.md5().toHexString())","records_\(keyspace.md5().toHexString())")
+        
+        schemalock.mutex {
+            if schemaseen.contains(keyspace) == false {
+                
+                // setup lock
+                schemalocks[keyspace] = Mutex()
+                schemaseen.append(keyspace)
+                
+                // tables
+                _ = try? self.execute(keyspace: keyspace, sql: "CREATE TABLE IF NOT EXISTS \(names.data) (id BLOB PRIMARY KEY, value BLOB);", params: [])
+                _ = try? self.execute(keyspace: keyspace, sql: "CREATE TABLE IF NOT EXISTS \(names.records) (id BLOB PRIMARY KEY, keyspace BLOB);", params: [])
+                
+                // indexes
+                _ = try? self.execute(keyspace: keyspace, sql: "CREATE INDEX IF NOT EXISTS idx_\(names.records)_keyspace ON \(names.records) (keyspace);", params: [])
+            }
+            return
+        }
+        
+        return names
+        
     }
     
     fileprivate func makeId(_ key: Data,_ keyspace: Data) -> Data {
@@ -68,9 +99,9 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
         return hash.sha256()
     }
     
-    public func execute(sql: String, params:[Any?]) throws {
+    public func execute(keyspace: Data, sql: String, params:[Any?]) throws {
         
-        try lock.throwingMutex {
+        try obtainLock(keyspace: keyspace).throwingMutex {
             var values: [Any?] = []
             for o in params {
                 values.append(o)
@@ -96,9 +127,9 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
         
     }
     
-    fileprivate func query(sql: String, params:[Any?]) throws -> [Data?] {
+    fileprivate func query(keyspace: Data, sql: String, params:[Any?]) throws -> [Data?] {
         
-        if let results = try lock.throwingMutex ({ () -> [Data?] in
+        if let results = try obtainLock(keyspace: keyspace).throwingMutex ({ () -> [Data?] in
             
             var results: [Data?] = []
             
@@ -146,11 +177,11 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
         
     }
     
-    public func query(sql: String, parameters:[Any?]) -> [[Any?]] {
+    public func query(keyspace: Data, sql: String, parameters:[Any?]) -> [[Any?]] {
         
         var results: [[Any?]] = []
         
-        lock.mutex {
+        obtainLock(keyspace: keyspace).mutex {
             var values: [Any?] = []
             for o in parameters {
                 values.append(o)
@@ -203,27 +234,16 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
     }
     
     public func transact(_ mode: transaction) -> Bool {
-        do {
-            switch mode {
-            case .begin:
-                try execute(sql: "BEGIN TRANSACTION", params: [])
-            case .commit:
-                try execute(sql: "COMMIT TRANSACTION", params: [])
-            case .rollback:
-                try execute(sql: "ROLLBACK TRANSACTION", params: [])
-            }
-            return true
-        } catch {
-            return false
-        }
+        return true
     }
     
     func put(key: Data, keyspace: Data, object: Data?, queryKeys: [Data]?) -> Bool {
         
             let id = makeId(key, keyspace)
+            let names = makeTableNames(keyspace: keyspace)
             do {
                 if config.aes256encryptionKey == nil {
-                    try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,object])
+                    try execute(keyspace: keyspace, sql: "INSERT OR REPLACE INTO \(names.data) (id,value) VALUES (?,?);", params: [id,object])
                 } else {
                     // this data is to be stored encrypted
                     if let encKey = config.aes256encryptionKey {
@@ -233,21 +253,15 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
                             let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
                             // look at dealing with null assignment here
                             let encryptedData = Data(try aes.encrypt(object!.bytes))
-                            try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,encryptedData])
+                            try execute(keyspace: keyspace, sql: "INSERT OR REPLACE INTO \(names.data) (id,value) VALUES (?,?);", params: [id,encryptedData])
                         } catch {
                             assertionFailure("encryption error: \(error)")
                         }
                     }
                 }
                 
-                try execute(sql: "INSERT OR REPLACE INTO Records (id,keyspace) VALUES (?,?)", params: [id,keyspace])
-                if let queryKeys = queryKeys {
-                    //QueriableData (id BLOB PRIMARY KEY, keyspace BLOB, key TEXT, value TEXT)
-                    try? execute(sql: "DELETE FROM QueryableData WHERE id = ?;", params: [id])
-                    for k in queryKeys {
-                        try? execute(sql: "INSERT OR REPLACE INTO QueryableData (recid,id,keyspace,key) VALUES (?,?,?,?);", params: [UUID().asData(),id,keyspace,k])
-                    }
-                }
+                try execute(keyspace: keyspace, sql: "INSERT OR REPLACE INTO \(names.records) (id,keyspace) VALUES (?,?)", params: [id,keyspace])
+                
                 return true
             } catch {
                 return false
@@ -257,11 +271,13 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
 
     public func put<T>(key: Data, keyspace: Data, _ object: T) -> Bool where T : Decodable, T : Encodable {
         
+        let names = makeTableNames(keyspace: keyspace)
+        
         if let jsonObject = try? JSONEncoder().encode(object) {
             let id = makeId(key, keyspace)
             do {
                 if config.aes256encryptionKey == nil {
-                    try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,jsonObject])
+                    try execute(keyspace: keyspace, sql: "INSERT OR REPLACE INTO \(names.data) (id,value) VALUES (?,?);", params: [id,jsonObject])
                 } else {
                     // this data is to be stored encrypted
                     if let encKey = config.aes256encryptionKey {
@@ -270,27 +286,14 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
                         do {
                             let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
                             let encryptedData = Data(try aes.encrypt(jsonObject.bytes))
-                            try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,encryptedData])
+                            try execute(keyspace: keyspace, sql: "INSERT OR REPLACE INTO \(names.data) (id,value) VALUES (?,?);", params: [id,encryptedData])
                         } catch {
                             print("encryption error: \(error)")
                         }
                     }
                 }
                 
-                try execute(sql: "INSERT OR REPLACE INTO Records (id,keyspace) VALUES (?,?)", params: [id,keyspace])
-                if let queryableObject = object as? Queryable {
-                    //QueriableData (id BLOB PRIMARY KEY, keyspace BLOB, key TEXT, value TEXT)
-                    try? execute(sql: "DELETE FROM QueryableData WHERE id = ?;", params: [id])
-                    for kv in queryableObject.queryableItems {
-                        if config.hashQueriableProperties == false {
-                            try? execute(sql: "INSERT OR REPLACE INTO QueryableData (recid,id,keyspace,key,value) VALUES (?,?,?,?,?);", params: [UUID().asData(),id,keyspace,kv.key, kv.value])
-                        } else {
-                            // hash the key and value together so data can be queried, but remains anonymous
-                            let keyHash = hashParam(kv.key.data(using: .utf8)!, kv.value)
-                            try? execute(sql: "INSERT OR REPLACE INTO QueryableData (recid,id,keyspace,key) VALUES (?,?,?,?);", params: [UUID().asData(),id,keyspace,keyHash])
-                        }
-                    }
-                }
+                try execute(keyspace: keyspace, sql: "INSERT OR REPLACE INTO \(names.records) (id,keyspace) VALUES (?,?)", params: [id,keyspace])
                 return true
             } catch {
                 return false
@@ -301,10 +304,10 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
     
     public func delete(key: Data, keyspace: Data) -> Bool {
         let id = makeId(key, keyspace)
+        let names = makeTableNames(keyspace: keyspace)
         do {
-            try execute(sql: "DELETE FROM QueryableData WHERE id = ?;", params: [id])
-            try execute(sql: "DELETE FROM Data WHERE id = ?;", params: [id])
-            try execute(sql: "DELETE FROM Records WHERE id = ?;", params: [id])
+            try execute(keyspace: keyspace, sql: "DELETE FROM \(names.data) WHERE id = ?;", params: [id])
+            try execute(keyspace: keyspace, sql: "DELETE FROM \(names.records) WHERE id = ?;", params: [id])
             return true
         } catch {
             return false
@@ -314,14 +317,15 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
     @discardableResult
     public func get<T>(key: Data, keyspace: Data) -> T? where T : Decodable, T : Encodable {
         let id = makeId(key, keyspace)
+        let names = makeTableNames(keyspace: keyspace)
         do {
             if config.aes256encryptionKey == nil {
-                if let data = try query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data {
+                if let data = try query(keyspace: keyspace, sql: "SELECT value FROM \(names.data) WHERE id = ?", params: [id]).first, let objectData = data {
                     let object = try decoder.decode(T.self, from: objectData)
                     return object
                 }
             } else {
-                if let data = try query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data, let encKey = config.aes256encryptionKey {
+                if let data = try query(keyspace: keyspace, sql: "SELECT value FROM \(names.data) WHERE id = ?", params: [id]).first, let objectData = data, let encKey = config.aes256encryptionKey {
                     let key = encKey.sha256()
                     let iv = (encKey + Data(kSaltValue.bytes)).md5()
                     do {
@@ -339,7 +343,7 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
             debugPrint("SQLiteProvider Error:  Failed to decode stored object into type: \(T.self)")
             debugPrint("Error:")
             debugPrint(error)
-            if let data = try? query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data, let body = String(data: objectData, encoding: .utf8) {
+            if let data = try? query(keyspace: keyspace, sql: "SELECT value FROM \(names.data) WHERE id = ?", params: [id]).first, let objectData = data, let body = String(data: objectData, encoding: .utf8) {
                 
                 debugPrint("Object data:")
                 debugPrint(body)
@@ -351,102 +355,15 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
     
     @discardableResult
     public func query<T>(keyspace: Data, params: [param]?) -> [T] where T : Decodable, T : Encodable {
-        var results: [T] = []
-        var whereParams: [Any?] = []
-        // loop to see if there are any where conditions
-        var foundWhere = false
-        for p in params ?? [] {
-            switch p {
-            case .where(_, _, _):
-                foundWhere = true
-                break;
-            default:
-                break
-            }
-        }
-        var whereSql = ""
-        if foundWhere {
-            whereSql += " QueryableData AS QD0 "
-            var wheres: [String] = []
-            var idx = 0
-            for p in params ?? [] {
-                switch p {
-                case .where(let key, let op, let param):
-                    if idx > 0 {
-                        whereSql += " JOIN QueryableData AS QD\(idx) on QD\(idx-1).id = QD\(idx).id "
-                    }
-                    switch op {
-                    case .equals:
-                        if config.hashQueriableProperties {
-                            wheres.append("(QD\(idx).key = ?)")
-                            whereParams.append(hashParam(key.data(using: .utf8)!, param))
-                        } else {
-                            wheres.append("(QD\(idx).key = ? AND QD\(idx).value = ?)")
-                            whereParams.append(key)
-                            whereParams.append(param)
-                        }
-                    case .greater:
-                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value > ?)")
-                        whereParams.append(key)
-                        whereParams.append(param)
-                    case .isnotnull:
-                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value IS NOT NULL)")
-                        whereParams.append(key)
-                    case .isnull:
-                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value IS NULL)")
-                        whereParams.append(key)
-                    case .less:
-                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value < ?)")
-                        whereParams.append(key)
-                        whereParams.append(param)
-                    }
-                    idx += 1
-                    break;
-                default:
-                    break
-                }
-            }
-            
-            whereSql += " WHERE "
-            whereSql += wheres.joined(separator: " AND ")
-        }
-        do {
-            // urgh, this is complex, but works well in fact
-            // SELECT QD1.recid FROM QueriableData as QD1 JOIN QueriableData AS QD2 on QD1.recid = QD2.recid JOIN QueriableData AS QD3 on QD2.recid = QD3.recid WHERE (QD1.key = "age" AND QD1.value = 40) AND (QD2."key" = "name" AND QD2.value = "adrian") AND (QD3.key = "surname" AND QD3.value = "herridge")
-            let data = try query(sql: "SELECT value FROM Data WHERE id IN (SELECT QD0.id FROM \(whereSql) );", params: whereParams)
-            for d in data {
-                if config.aes256encryptionKey == nil {
-                    if let objectData = d, let object = try? decoder.decode(T.self, from: objectData) {
-                        results.append(object)
-                    }
-                } else {
-                    // this data is to be stored encrypted
-                    if let encKey = config.aes256encryptionKey {
-                        let key = encKey.sha256()
-                        let iv = (encKey + Data(kSaltValue.bytes)).md5()
-                        do {
-                            let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
-                            if let encryptedData = d {
-                                let objectData = try aes.decrypt(encryptedData.bytes)
-                                let object = try decoder.decode(T.self, from: Data(objectData))
-                                results.append(object)
-                            }
-                        } catch {
-                            print("encryption error: \(error)")
-                        }
-                    }
-                }
-            }
-            return results
-        } catch  {
-            return []
-        }
+        let results: [T] = []
+        return results
     }
     
     @discardableResult
     public func all<T>(keyspace: Data) -> [T] where T : Decodable, T : Encodable {
         do {
-            let data = try query(sql: "SELECT value FROM Data WHERE id IN (SELECT id FROM Records WHERE keyspace = ?);", params: [keyspace])
+            let names = makeTableNames(keyspace: keyspace)
+            let data = try query(keyspace: keyspace, sql: "SELECT value FROM \(names.data) WHERE id IN (SELECT id FROM \(names.records) WHERE keyspace = ?);", params: [keyspace])
             var aggregation: [Data] = []
             for d in data {
                 if config.aes256encryptionKey == nil {
@@ -536,20 +453,4 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
         
     }
     
-}
-
-extension UUID{
-    public func asData() -> Data {
-        func asUInt8Array() -> [UInt8] {
-            let (u1,u2,u3,u4,u5,u6,u7,u8,u9,u10,u11,u12,u13,u14,u15,u16) = self.uuid
-            return [u1,u2,u3,u4,u5,u6,u7,u8,u9,u10,u11,u12,u13,u14,u15,u16]
-        }
-        return Data(asUInt8Array())
-    }
-}
-
-extension Data {
-    var bytes : [UInt8]{
-        return [UInt8](self)
-    }
 }
