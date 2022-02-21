@@ -15,7 +15,7 @@ fileprivate let SQLITE_STATIC = unsafeBitCast(0, to: sqlite3_destructor_type.sel
 fileprivate let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
 public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
-        
+    
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
     fileprivate var schemalock = Mutex()
@@ -256,7 +256,7 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
                             }
                         }
                     }
-    
+                    
                     results.append(row)
                     
                 }
@@ -276,42 +276,49 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
     }
     
     func put(key: Data, keyspace: Data, object: Data?, queryKeys: [Data]?) -> Bool {
-        
-            let id = makeId(key, keyspace)
-            let names = makeTableNames(keyspace: keyspace)
-            do {
-                if config.aes256encryptionKey == nil {
-                    try execute(keyspace: keyspace, sql: "INSERT OR REPLACE INTO \(names.data) (id,value) VALUES (?,?);", params: [id,object])
-                } else {
-                    // this data is to be stored encrypted
-                    if let encKey = config.aes256encryptionKey {
-                        let key = encKey.sha256()
-                        let iv = (encKey + Data(kSaltValue.bytes)).md5()
-                        do {
-                            let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
-                            // look at dealing with null assignment here
-                            let encryptedData = Data(try aes.encrypt(object!.bytes))
-                            try execute(keyspace: keyspace, sql: "INSERT OR REPLACE INTO \(names.data) (id,value) VALUES (?,?);", params: [id,encryptedData])
-                        } catch {
-                            assertionFailure("encryption error: \(error)")
-                        }
+        if let logServer = self.config.logDriver {
+            logServer.log(type: .put, key: key, keyspace: keyspace, object: object)
+        }
+        let id = makeId(key, keyspace)
+        let names = makeTableNames(keyspace: keyspace)
+        do {
+            if config.aes256encryptionKey == nil {
+                try execute(keyspace: keyspace, sql: "INSERT OR REPLACE INTO \(names.data) (id,value) VALUES (?,?);", params: [id,object])
+            } else {
+                // this data is to be stored encrypted
+                if let encKey = config.aes256encryptionKey {
+                    let key = encKey.sha256()
+                    let iv = (encKey + Data(kSaltValue.bytes)).md5()
+                    do {
+                        let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
+                        // look at dealing with null assignment here
+                        let encryptedData = Data(try aes.encrypt(object!.bytes))
+                        try execute(keyspace: keyspace, sql: "INSERT OR REPLACE INTO \(names.data) (id,value) VALUES (?,?);", params: [id,encryptedData])
+                    } catch {
+                        assertionFailure("encryption error: \(error)")
                     }
                 }
-                
-                try execute(keyspace: keyspace, sql: "INSERT OR REPLACE INTO \(names.records) (id,keyspace) VALUES (?,?)", params: [id,keyspace])
-                
-                return true
-            } catch {
-                return false
             }
+            
+            try execute(keyspace: keyspace, sql: "INSERT OR REPLACE INTO \(names.records) (id,keyspace) VALUES (?,?)", params: [id,keyspace])
+            
+            return true
+        } catch {
+            return false
+        }
         
     }
-
+    
     public func put<T>(key: Data, keyspace: Data, _ object: T) -> Bool where T : Decodable, T : Encodable {
         
         let names = makeTableNames(keyspace: keyspace)
         
         if let jsonObject = try? JSONEncoder().encode(object) {
+            
+            if let logServer = self.config.logDriver {
+                logServer.log(type: .put, key: key, keyspace: keyspace, object: jsonObject)
+            }
+            
             let id = makeId(key, keyspace)
             do {
                 if config.aes256encryptionKey == nil {
@@ -341,6 +348,9 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
     }
     
     public func delete(key: Data, keyspace: Data) -> Bool {
+        if let logServer = self.config.logDriver {
+            logServer.log(type: .delete, key: key, keyspace: keyspace, object: nil)
+        }
         let id = makeId(key, keyspace)
         let names = makeTableNames(keyspace: keyspace)
         do {

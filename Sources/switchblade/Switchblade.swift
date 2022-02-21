@@ -90,11 +90,37 @@ public enum SwitchbladeLogDriverLogType {
 
 public class SwitchbladeLogDriver {
     
+    private struct Entry {
+        var type: SwitchbladeLogDriverLogType
+        var key: Data
+        var keyspace: Data
+        var object: Data?
+    }
+    
+    private var atomic = false
+    private var filename = "switchblade.log"
+    private var buffer: [Entry] = []
+    private var lock = Mutex()
+    private var outputLock = Mutex()
+    
     public init(filename: String, atomic: Bool) {
-        
+        self.atomic = atomic
+        self.filename = filename
+        if atomic == false {
+            
+        }
     }
     
     public func log(type: SwitchbladeLogDriverLogType, key: Data, keyspace: Data, object: Data?) {
+        
+    }
+    
+    private func flush() {
+        
+    }
+    
+    public func restore(switchblade: Switchblade) {
+        // blocks and locks until log is restored into provider
         
     }
     

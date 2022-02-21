@@ -8,7 +8,7 @@
 import Foundation
 
 public class SwitchbladeConfig {
-    var logDriver: SwitchbladeLogDriver?
-    var hashQueriableProperties: Bool = false
-    var aes256encryptionKey: Data? = nil
+    public var logDriver: SwitchbladeLogDriver?
+    public var hashQueriableProperties: Bool = false
+    public var aes256encryptionKey: Data? = nil
 }
