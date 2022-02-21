@@ -21,8 +21,9 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
     fileprivate var schemalock = Mutex()
     fileprivate var schemaseen: [Data] = []
     fileprivate var schemalocks: [Data:Mutex] = [:]
+    fileprivate var schemaConnections: [Data:OpaquePointer] = [:]
     
-    var db: OpaquePointer?
+    var primaryConnection: OpaquePointer?
     private var p: String?
     let decoder: JSONDecoder = JSONDecoder()
     
@@ -33,16 +34,16 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
     public func open() throws {
         
         // create any folders up until this point as well
-        let _ = sqlite3_open("\(p!)", &db);
-        if db == nil {
+        let _ = sqlite3_open("\(p!)", &primaryConnection);
+        if primaryConnection == nil {
             throw DatabaseError.Init(.UnableToCreateLocalDatabase)
         }
         
     }
     
     public func close() throws {
-        sqlite3_close(db)
-        db = nil;
+        sqlite3_close(primaryConnection)
+        primaryConnection = nil;
     }
     
     fileprivate func obtainLock(keyspace: Data) -> Mutex {
@@ -58,6 +59,19 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
         
     }
     
+    fileprivate func obtainDatabase(_ keyspace: Data) -> OpaquePointer {
+        
+        var db: OpaquePointer?
+        
+        schemalock.mutex {
+            db = schemaConnections[keyspace]
+        }
+        
+        // deliberately fragile to promote correct order of execution
+        return db!
+        
+    }
+    
     fileprivate func makeTableNames(keyspace: Data) -> (data: String, records: String) {
         
         let names: (data: String, records: String) = ("data_\(keyspace.md5().toHexString())","records_\(keyspace.md5().toHexString())")
@@ -67,6 +81,16 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
                 
                 // setup lock
                 schemalocks[keyspace] = Mutex()
+                
+                // setup connection
+                var thisConection: OpaquePointer?
+                let _ = sqlite3_open("\(p!)", &thisConection);
+                if thisConection == nil {
+                    assertionFailure("unable to open connection")
+                }
+                schemaConnections[keyspace] = thisConection
+                
+                //register
                 schemaseen.append(keyspace)
                 
                 // tables
@@ -108,7 +132,7 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
             }
             
             var stmt: OpaquePointer?
-            if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
+            if sqlite3_prepare_v2(obtainDatabase(keyspace), sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
                 
                 bind(stmt: stmt, params: values);
                 
@@ -131,9 +155,9 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
                 
             } else {
                 // error in statement
-                debugPrint(String(cString: sqlite3_errmsg(db)))
+                debugPrint(String(cString: sqlite3_errmsg(obtainDatabase(keyspace))))
                 Switchblade.errors[blade.instance] = true
-                throw DatabaseError.Execute(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
+                throw DatabaseError.Execute(.SyntaxError("\(String(cString: sqlite3_errmsg(obtainDatabase(keyspace))))"))
             }
             
             sqlite3_finalize(stmt)
@@ -153,7 +177,7 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
             }
             
             var stmt: OpaquePointer?
-            if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
+            if sqlite3_prepare_v2(obtainDatabase(keyspace), sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
                 bind(stmt: stmt, params: values);
                 while sqlite3_step(stmt) == SQLITE_ROW {
                     
@@ -174,9 +198,9 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
                     
                 }
             } else {
-                print(String(cString: sqlite3_errmsg(db)))
+                print(String(cString: sqlite3_errmsg(obtainDatabase(keyspace))))
                 Switchblade.errors[blade.instance] = true
-                throw DatabaseError.Query(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
+                throw DatabaseError.Query(.SyntaxError("\(String(cString: sqlite3_errmsg(obtainDatabase(keyspace))))"))
             }
             
             sqlite3_finalize(stmt)
@@ -202,7 +226,7 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
             }
             
             var stmt: OpaquePointer?
-            if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
+            if sqlite3_prepare_v2(obtainDatabase(keyspace), sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
                 bind(stmt: stmt, params: values);
                 while sqlite3_step(stmt) == SQLITE_ROW {
                     
@@ -237,7 +261,7 @@ public class SQLiteHighPerformanceProvider: DataProvider, DataProviderPrivate {
                     
                 }
             } else {
-                print(String(cString: sqlite3_errmsg(db)))
+                print(String(cString: sqlite3_errmsg(obtainDatabase(keyspace))))
                 Switchblade.errors[blade.instance] = true
             }
             
