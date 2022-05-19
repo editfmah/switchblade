@@ -92,7 +92,7 @@ public class SwitchbladeLogDriver {
     
     private struct Entry {
         var type: SwitchbladeLogDriverLogType
-        var key: Data
+        var key: String
         var keyspace: Data
         var object: Data?
     }
@@ -111,7 +111,7 @@ public class SwitchbladeLogDriver {
         }
     }
     
-    public func log(type: SwitchbladeLogDriverLogType, key: Data, keyspace: Data, object: Data?) {
+    public func log(type: SwitchbladeLogDriverLogType, key: String, keyspace: Data, object: Data?) {
         
     }
     

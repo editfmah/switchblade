@@ -14,7 +14,7 @@ public class Person : Codable, Identifiable, KeyspaceIdentifiable, Queryable {
         return ["name" : self.Name, "age" : self.Age, "department" : self.DepartmentId]
     }
     
-    public var key: KeyType {
+    public var key: PrimaryKeyType {
         return self.PersonId
     }
     

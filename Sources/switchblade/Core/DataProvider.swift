@@ -13,11 +13,12 @@ public protocol DataProvider {
     func close() throws
 
     @discardableResult func transact(_ mode: transaction) -> Bool
-    @discardableResult func put<T: Codable>(key: Data, keyspace: Data,_ object: T) -> Bool
-    @discardableResult func delete(key: Data, keyspace: Data) -> Bool
-    @discardableResult func get<T:Codable>(key: Data, keyspace: Data) -> T?
-    @discardableResult func query<T: Codable>(keyspace: Data, params: [param]?) -> [T]
-    @discardableResult func all<T: Codable>(keyspace: Data) -> [T]
+    
+    @discardableResult func put<T: Codable>(partition: String, key: String, keyspace: String, ttl: Int, _ object: T) -> Bool
+    @discardableResult func delete(partition: String, key: String, keyspace: String) -> Bool
+    @discardableResult func get<T:Codable>(partition: String, key: String, keyspace: String) -> T?
+    @discardableResult func query<T: Codable>(partition: String, keyspace: String, params: [param]?) -> [T]
+    @discardableResult func all<T: Codable>(partition: String, keyspace: String) -> [T]
 
     var config: SwitchbladeConfig! { get set }
     var blade: Switchblade! { get set }
@@ -25,5 +26,5 @@ public protocol DataProvider {
 }
 
 internal protocol DataProviderPrivate {
-    @discardableResult func put(key: Data, keyspace: Data, object: Data?, queryKeys: [Data]?) -> Bool
+    @discardableResult func put(partition: String, key: String, keyspace: String, object: Data?, queryKeys: [Data]?, ttl: Int) -> Bool
 }

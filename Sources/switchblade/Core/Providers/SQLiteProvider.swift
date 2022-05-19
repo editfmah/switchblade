@@ -14,7 +14,8 @@ fileprivate let SQLITE_STATIC = unsafeBitCast(0, to: sqlite3_destructor_type.sel
 fileprivate let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
 public class SQLiteProvider: DataProvider, DataProviderPrivate {
-        
+    
+    
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
     fileprivate var lock = Mutex()
@@ -36,14 +37,25 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
         }
         
         // tables
-        _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS Data (id BLOB PRIMARY KEY, value BLOB);", params: [])
-        _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS Records (id BLOB PRIMARY KEY, keyspace BLOB);", params: [])
-        _ = try self.execute(sql: "CREATE TABLE IF NOT EXISTS QueryableData (recid BLOB PRIMARY KEY, id BLOB, keyspace BLOB, key TEXT, value BLOB);", params: [])
-        
-        // indexes
-        _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_records_keyspace ON Records  (keyspace);", params: [])
-        _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_qd_id ON QueryableData (id);", params: [])
-        _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_qd_keyspace ON QueryableData (keyspace, key);", params: [])
+        _ = try self.execute(sql: """
+CREATE TABLE IF NOT EXISTS Data (
+    partition TEXT,
+    keyspace TEXT,
+    id TEXT,
+    value BLOB,
+    ttl INTEGER,
+    timestamp INT,
+    querykey1 TEXT,
+    queryvalue1 TEXT,
+    querykey2 TEXT,
+    queryvalue2 TEXT,
+    querykey3 TEXT,
+    queryvalue3 TEXT,
+    querykey4 TEXT,
+    queryvalue4 TEXT,
+    PRIMARY KEY (partition,keyspace,id)
+);
+""", params: [])
         
     }
     
@@ -52,14 +64,12 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
         db = nil;
     }
     
-    fileprivate func makeId(_ key: Data,_ keyspace: Data) -> Data {
-        var id = Data(key)
-        id.append(keyspace)
-        return id.sha224()
+    fileprivate func makeId(_ key: String) -> String {
+        return key
     }
     
-    fileprivate func hashParam(_ key: Data,_ paramValue: Any?) -> Data {
-        var hash = key
+    fileprivate func hashParam(_ key: String,_ paramValue: Any?) -> Data {
+        var hash = key.data(using: .utf8)!
         if let value = paramValue as? Date {
             hash += Data("\(value.timeIntervalSince1970)".bytes)
         } else if let value = paramValue {
@@ -187,7 +197,7 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
                             }
                         }
                     }
-    
+                    
                     results.append(row)
                     
                 }
@@ -218,50 +228,109 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
         }
     }
     
-    func put(key: Data, keyspace: Data, object: Data?, queryKeys: [Data]?) -> Bool {
+    func put(partition: String, key: String, keyspace: String, object: Data?, queryKeys: [Data]?, ttl: Int) -> Bool {
         
-            let id = makeId(key, keyspace)
-            do {
-                if config.aes256encryptionKey == nil {
-                    try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,object])
-                } else {
-                    // this data is to be stored encrypted
-                    if let encKey = config.aes256encryptionKey {
-                        let key = encKey.sha256()
-                        let iv = (encKey + Data(kSaltValue.bytes)).md5()
-                        do {
-                            let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
-                            // look at dealing with null assignment here
-                            let encryptedData = Data(try aes.encrypt(object!.bytes))
-                            try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,encryptedData])
-                        } catch {
-                            assertionFailure("encryption error: \(error)")
-                        }
-                    }
-                }
-                
-                try execute(sql: "INSERT OR REPLACE INTO Records (id,keyspace) VALUES (?,?)", params: [id,keyspace])
-                if let queryKeys = queryKeys {
-                    //QueriableData (id BLOB PRIMARY KEY, keyspace BLOB, key TEXT, value TEXT)
-                    try? execute(sql: "DELETE FROM QueryableData WHERE id = ?;", params: [id])
-                    for k in queryKeys {
-                        try? execute(sql: "INSERT OR REPLACE INTO QueryableData (recid,id,keyspace,key) VALUES (?,?,?,?);", params: [UUID().asData(),id,keyspace,k])
-                    }
-                }
-                return true
-            } catch {
-                return false
+        var qk1: String? = nil
+        var qk2: String? = nil
+        var qk3: String? = nil
+        var qk4: String? = nil
+        
+        for kvp in queryKeys ?? [] {
+            if qk1 == nil {
+                qk1 = paramValue(kvp)
+            } else if qk2 == nil {
+                qk2 = paramValue(kvp)
+            } else if qk3 == nil {
+                qk3 = paramValue(kvp)
+            } else if qk4 == nil {
+                qk4 = paramValue(kvp)
             }
+        }
+        
+        let id = makeId(key)
+        do {
+            if config.aes256encryptionKey == nil {
+                try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,querykey1,querykey2,querykey3,querykey4,queryvalue1,queryvalue2,queryvalue3,queryvalue4,timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);", params: [partition,keyspace,id,object,ttl == -1 ? nil : Int(Date().timeIntervalSince1970) + ttl,qk1,qk2,qk3,qk4,nil,nil,nil,nil,Int(Date().timeIntervalSince1970)])
+            } else {
+                // this data is to be stored encrypted
+                if let encKey = config.aes256encryptionKey {
+                    let key = encKey.sha256()
+                    let iv = (encKey + Data(kSaltValue.bytes)).md5()
+                    do {
+                        let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
+                        // look at dealing with null assignment here
+                        let encryptedData = Data(try aes.encrypt(object!.bytes))
+                        try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,querykey1,querykey2,querykey3,querykey4,queryvalue1,queryvalue2,queryvalue3,queryvalue4,timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);", params: [partition,keyspace,id,encryptedData,ttl == -1 ? nil : Int(Date().timeIntervalSince1970) + ttl,qk1,qk2,qk3,qk4,nil,nil,nil,nil,Int(Date().timeIntervalSince1970)])
+                    } catch {
+                        assertionFailure("encryption error: \(error)")
+                    }
+                }
+            }
+            return true
+        } catch {
+            return false
+        }
         
     }
-
-    public func put<T>(key: Data, keyspace: Data, _ object: T) -> Bool where T : Decodable, T : Encodable {
+    
+    fileprivate func paramValue(_ value: Any?) -> String? {
+        if let value = value {
+            if let v = value as? String {
+                return v
+            } else if let v = value as? Int {
+                return "\(v)"
+            } else if let v = value as? Double {
+                return "\(v)"
+            } else if let v = value as? Date {
+                return "\(v.timeIntervalSince1970)"
+            } else if let v = value as? Data {
+                return "\(v.base64EncodedString())"
+            } else if let v = value as? Bool {
+                return "\(v)"
+            } else if let v = value as? UUID {
+                return "\(v.uuidString.lowercased())"
+            } else {
+                return "\(value)"
+            }
+        } else {
+            return nil
+        }
+    }
+    
+    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, _ object: T) -> Bool where T : Decodable, T : Encodable {
+        
+        var qk1: String? = nil
+        var qk2: String? = nil
+        var qk3: String? = nil
+        var qk4: String? = nil
+        var qv1: String? = nil
+        var qv2: String? = nil
+        var qv3: String? = nil
+        var qv4: String? = nil
+        
+        if let queryableObject = object as? Queryable {
+            for kvp in queryableObject.queryableItems {
+                if qk1 == nil {
+                    qk1 = kvp.key
+                    qv1 = paramValue(kvp.value)
+                } else if qk2 == nil {
+                    qk2 = kvp.key
+                    qv2 = paramValue(kvp.value)
+                } else if qk3 == nil {
+                    qk3 = kvp.key
+                    qv3 = paramValue(kvp.value)
+                } else if qk4 == nil {
+                    qk4 = kvp.key
+                    qv4 = paramValue(kvp.value)
+                }
+            }
+        }
         
         if let jsonObject = try? JSONEncoder().encode(object) {
-            let id = makeId(key, keyspace)
+            let id = makeId(key)
             do {
                 if config.aes256encryptionKey == nil {
-                    try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,jsonObject])
+                    try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,querykey1,querykey2,querykey3,querykey4,queryvalue1,queryvalue2,queryvalue3,queryvalue4,timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);", params: [partition,keyspace,id,jsonObject,ttl == -1 ? nil : Int(Date().timeIntervalSince1970) + ttl,qk1,qk2,qk3,qk4,qv1,qv2,qv3,qv4,Int(Date().timeIntervalSince1970)])
                 } else {
                     // this data is to be stored encrypted
                     if let encKey = config.aes256encryptionKey {
@@ -270,27 +339,13 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
                         do {
                             let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
                             let encryptedData = Data(try aes.encrypt(jsonObject.bytes))
-                            try execute(sql: "INSERT OR REPLACE INTO Data (id,value) VALUES (?,?);", params: [id,encryptedData])
+                            try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,querykey1,querykey2,querykey3,querykey4,queryvalue1,queryvalue2,queryvalue3,queryvalue4,timestamp) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);", params: [partition,keyspace,id,encryptedData,ttl == -1 ? nil : Int(Date().timeIntervalSince1970) + ttl,qk1,qk2,qk3,qk4,qv1,qv2,qv3,qv4,Int(Date().timeIntervalSince1970)])
                         } catch {
                             print("encryption error: \(error)")
                         }
                     }
                 }
                 
-                try execute(sql: "INSERT OR REPLACE INTO Records (id,keyspace) VALUES (?,?)", params: [id,keyspace])
-                if let queryableObject = object as? Queryable {
-                    //QueriableData (id BLOB PRIMARY KEY, keyspace BLOB, key TEXT, value TEXT)
-                    try? execute(sql: "DELETE FROM QueryableData WHERE id = ?;", params: [id])
-                    for kv in queryableObject.queryableItems {
-                        if config.hashQueriableProperties == false {
-                            try? execute(sql: "INSERT OR REPLACE INTO QueryableData (recid,id,keyspace,key,value) VALUES (?,?,?,?,?);", params: [UUID().asData(),id,keyspace,kv.key, kv.value])
-                        } else {
-                            // hash the key and value together so data can be queried, but remains anonymous
-                            let keyHash = hashParam(kv.key.data(using: .utf8)!, kv.value)
-                            try? execute(sql: "INSERT OR REPLACE INTO QueryableData (recid,id,keyspace,key) VALUES (?,?,?,?);", params: [UUID().asData(),id,keyspace,keyHash])
-                        }
-                    }
-                }
                 return true
             } catch {
                 return false
@@ -299,12 +354,9 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
         return false
     }
     
-    public func delete(key: Data, keyspace: Data) -> Bool {
-        let id = makeId(key, keyspace)
+    public func delete(partition: String, key: String, keyspace: String) -> Bool {
         do {
-            try execute(sql: "DELETE FROM QueryableData WHERE id = ?;", params: [id])
-            try execute(sql: "DELETE FROM Data WHERE id = ?;", params: [id])
-            try execute(sql: "DELETE FROM Records WHERE id = ?;", params: [id])
+            try execute(sql: "DELETE FROM Data WHERE partition = ? AND keyspace = ? AND id = ?;", params: [partition, keyspace, key])
             return true
         } catch {
             return false
@@ -312,16 +364,15 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
     }
     
     @discardableResult
-    public func get<T>(key: Data, keyspace: Data) -> T? where T : Decodable, T : Encodable {
-        let id = makeId(key, keyspace)
+    public func get<T>(partition: String, key: String, keyspace: String) -> T? where T : Decodable, T : Encodable {
         do {
             if config.aes256encryptionKey == nil {
-                if let data = try query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data {
+                if let data = try query(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND id = ?", params: [partition,keyspace,key]).first, let objectData = data {
                     let object = try decoder.decode(T.self, from: objectData)
                     return object
                 }
             } else {
-                if let data = try query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data, let encKey = config.aes256encryptionKey {
+                if let data = try query(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND id = ?", params: [partition,keyspace,key]).first, let objectData = data, let encKey = config.aes256encryptionKey {
                     let key = encKey.sha256()
                     let iv = (encKey + Data(kSaltValue.bytes)).md5()
                     do {
@@ -339,7 +390,7 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
             debugPrint("SQLiteProvider Error:  Failed to decode stored object into type: \(T.self)")
             debugPrint("Error:")
             debugPrint(error)
-            if let data = try? query(sql: "SELECT value FROM Data WHERE id = ?", params: [id]).first, let objectData = data, let body = String(data: objectData, encoding: .utf8) {
+            if let data = try? query(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND id = ?", params: [partition,keyspace,key]).first, let objectData = data, let body = String(data: objectData, encoding: .utf8) {
                 
                 debugPrint("Object data:")
                 debugPrint(body)
@@ -350,9 +401,10 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
     }
     
     @discardableResult
-    public func query<T>(keyspace: Data, params: [param]?) -> [T] where T : Decodable, T : Encodable {
+    public func query<T>(partition: String, keyspace: String, params: [param]?) -> [T] where T : Decodable, T : Encodable {
         var results: [T] = []
-        var whereParams: [Any?] = []
+        
+        var whereParams: [Any?] = [partition,keyspace]
         // loop to see if there are any where conditions
         var foundWhere = false
         for p in params ?? [] {
@@ -364,41 +416,66 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
                 break
             }
         }
+        var wheres: [String] = []
         var whereSql = ""
         if foundWhere {
-            whereSql += " QueryableData AS QD0 "
-            var wheres: [String] = []
+            
             var idx = 0
             for p in params ?? [] {
                 switch p {
                 case .where(let key, let op, let param):
-                    if idx > 0 {
-                        whereSql += " JOIN QueryableData AS QD\(idx) on QD\(idx-1).id = QD\(idx).id "
-                    }
                     switch op {
                     case .equals:
                         if config.hashQueriableProperties {
-                            wheres.append("(QD\(idx).key = ?)")
-                            whereParams.append(hashParam(key.data(using: .utf8)!, param))
+                            wheres.append("((querykey1 = ? OR querykey2 = ? OR querykey3 = ? OR querykey4 = ?))")
+                            let v = hashParam(key, param)
+                            whereParams.append(v)
+                            whereParams.append(v)
+                            whereParams.append(v)
+                            whereParams.append(v)
                         } else {
-                            wheres.append("(QD\(idx).key = ? AND QD\(idx).value = ?)")
+                            wheres.append("((querykey1 = ? AND queryvalue1 = ?) OR (querykey2 = ? AND queryvalue2 = ?) OR (querykey3 = ? AND queryvalue3 = ?) OR (querykey4 = ? AND queryvalue4 = ?))")
                             whereParams.append(key)
-                            whereParams.append(param)
+                            whereParams.append(paramValue(param))
+                            whereParams.append(key)
+                            whereParams.append(paramValue(param))
+                            whereParams.append(key)
+                            whereParams.append(paramValue(param))
+                            whereParams.append(key)
+                            whereParams.append(paramValue(param))
                         }
                     case .greater:
-                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value > ?)")
+                        wheres.append("((queryKey1 = ? AND cast(queryvalue1 as real) > cast(? as real)) OR (queryKey2 = ? AND cast(queryvalue2 as real) > cast(? as real)) OR (queryKey3 = ? AND cast(queryvalue3 as real) > cast(? as real)) OR (queryKey4 = ? AND cast(queryvalue4 as real) > cast(? as real)))")
                         whereParams.append(key)
-                        whereParams.append(param)
+                        whereParams.append(paramValue(param))
+                        whereParams.append(key)
+                        whereParams.append(paramValue(param))
+                        whereParams.append(key)
+                        whereParams.append(paramValue(param))
+                        whereParams.append(key)
+                        whereParams.append(paramValue(param))
                     case .isnotnull:
-                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value IS NOT NULL)")
+                        wheres.append("((querykey1 = ? AND queryvalue1 IS NOT NULL) OR (querykey2 = ? AND queryvalue2 IS NOT NULL) OR (querykey3 = ? AND queryvalue3 IS NOT NULL) OR (querykey4 = ? AND queryvalue4 IS NOT NULL))")
+                        whereParams.append(key)
+                        whereParams.append(key)
+                        whereParams.append(key)
                         whereParams.append(key)
                     case .isnull:
-                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value IS NULL)")
+                        wheres.append("((querykey1 = ? AND queryvalue1 IS NULL) OR (querykey2 = ? AND queryvalue2 IS NULL) OR (querykey3 = ? AND queryvalue3 IS NULL) OR (querykey4 = ? AND queryvalue4 IS NULL))")
+                        whereParams.append(key)
+                        whereParams.append(key)
+                        whereParams.append(key)
                         whereParams.append(key)
                     case .less:
-                        wheres.append("(QD\(idx).key = ? AND QD\(idx).value < ?)")
+                        wheres.append("((queryKey1 = ? AND cast(queryvalue1 as real) < cast(? as real)) OR (queryKey2 = ? AND cast(queryvalue2 as real) < cast(? as real)) OR (queryKey3 = ? AND cast(queryvalue3 as real) < cast(? as real)) OR (queryKey4 = ? AND cast(queryvalue4 as real) < cast(? as real)))")
                         whereParams.append(key)
-                        whereParams.append(param)
+                        whereParams.append(paramValue(param))
+                        whereParams.append(key)
+                        whereParams.append(paramValue(param))
+                        whereParams.append(key)
+                        whereParams.append(paramValue(param))
+                        whereParams.append(key)
+                        whereParams.append(paramValue(param))
                     }
                     idx += 1
                     break;
@@ -407,13 +484,13 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
                 }
             }
             
-            whereSql += " WHERE "
+            whereSql = " AND "
             whereSql += wheres.joined(separator: " AND ")
         }
         do {
             // urgh, this is complex, but works well in fact
             // SELECT QD1.recid FROM QueriableData as QD1 JOIN QueriableData AS QD2 on QD1.recid = QD2.recid JOIN QueriableData AS QD3 on QD2.recid = QD3.recid WHERE (QD1.key = "age" AND QD1.value = 40) AND (QD2."key" = "name" AND QD2.value = "adrian") AND (QD3.key = "surname" AND QD3.value = "herridge")
-            let data = try query(sql: "SELECT value FROM Data WHERE id IN (SELECT QD0.id FROM \(whereSql) );", params: whereParams)
+            let data = try query(sql: "SELECT value FROM Data WHERE (partition = ? AND keyspace = ?) \(whereSql);", params: whereParams)
             for d in data {
                 if config.aes256encryptionKey == nil {
                     if let objectData = d, let object = try? decoder.decode(T.self, from: objectData) {
@@ -441,12 +518,13 @@ public class SQLiteProvider: DataProvider, DataProviderPrivate {
         } catch  {
             return []
         }
+
     }
     
     @discardableResult
-    public func all<T>(keyspace: Data) -> [T] where T : Decodable, T : Encodable {
+    public func all<T>(partition: String, keyspace: String) -> [T] where T : Decodable, T : Encodable {
         do {
-            let data = try query(sql: "SELECT value FROM Data WHERE id IN (SELECT id FROM Records WHERE keyspace = ?);", params: [keyspace])
+            let data = try query(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? ORDER BY timestamp ASC;", params: [partition, keyspace])
             var aggregation: [Data] = []
             for d in data {
                 if config.aes256encryptionKey == nil {

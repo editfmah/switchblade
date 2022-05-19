@@ -8,6 +8,7 @@
 import Foundation
 
 internal func makeCompositeKey(_ components: [CompositeComponent]) -> String {
+    
     var keys: [String] = []
     
     for k in components {
@@ -26,6 +27,7 @@ internal func makeCompositeKey(_ components: [CompositeComponent]) -> String {
     }
     
     return keys.joined(separator: "|")
+    
 }
 
 public protocol CompositeComponent {

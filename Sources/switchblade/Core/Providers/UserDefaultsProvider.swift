@@ -32,20 +32,17 @@ public class UserDefaultsProvider: DataProvider, DataProviderPrivate {
         defaults.synchronize()
     }
     
-    fileprivate func makeId(_ key: Data,_ keyspace: Data) -> String {
-        var id = Data(key)
-        id.append(keyspace)
-        return "Switchblade_\(id.sha224().toHexString())"
+    fileprivate func makeId(_ key: String) -> String {
+        return "Switchblade_\(key.sha224())"
     }
     
     public func transact(_ mode: transaction) -> Bool {
         return true
     }
 
-    public func put<T>(key: Data, keyspace: Data, _ object: T) -> Bool where T : Decodable, T : Encodable {
-        
+    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, _ object: T) -> Bool where T : Decodable, T : Encodable {
         if let jsonObject = try? JSONEncoder().encode(object) {
-            let id = makeId(key, keyspace)
+            let id = makeId(key)
             if config.aes256encryptionKey == nil {
                 defaults.setValue(jsonObject, forKey: id)
             } else {
@@ -66,19 +63,19 @@ public class UserDefaultsProvider: DataProvider, DataProviderPrivate {
         return true
     }
     
-    func put(key: Data, keyspace: Data, object: Data?, queryKeys: [Data]?) -> Bool {
-        put(key: key, keyspace: keyspace, object)
+    func put(partition: String, key: String, keyspace: String, object: Data?, queryKeys: [Data]?, ttl: Int) -> Bool {
+        defaults.set(object, forKey: makeId(key))
+        return true
     }
     
-    public func delete(key: Data, keyspace: Data) -> Bool {
-        let id = makeId(key, keyspace)
+    public func delete(partition: String, key: String, keyspace: String) -> Bool {
+        let id = makeId(key)
         defaults.removeObject(forKey: id)
         return true
     }
     
-    @discardableResult
-    public func get<T>(key: Data, keyspace: Data) -> T? where T : Decodable, T : Encodable {
-        let id = makeId(key, keyspace)
+    public func get<T>(partition: String, key: String, keyspace: String) -> T? where T : Decodable, T : Encodable {
+        let id = makeId(key)
         if config.aes256encryptionKey == nil {
             if let data = defaults.data(forKey: id), let object = try? decoder.decode(T.self, from: data) {
                 return object
@@ -101,14 +98,12 @@ public class UserDefaultsProvider: DataProvider, DataProviderPrivate {
         return nil
     }
     
-    @discardableResult
-    public func query<T>(keyspace: Data, params: [param]?) -> [T] where T : Decodable, T : Encodable {
+    public func query<T>(partition: String, keyspace: String, params: [param]?) -> [T] where T : Decodable, T : Encodable {
         let results: [T] = []
         return results
     }
     
-    @discardableResult
-    public func all<T>(keyspace: Data) -> [T] where T : Decodable, T : Encodable {
+    public func all<T>(partition: String, keyspace: String) -> [T] where T : Decodable, T : Encodable {
         var results: [T] = []
         for (id, _) in defaults.dictionaryRepresentation() {
             if config.aes256encryptionKey == nil {

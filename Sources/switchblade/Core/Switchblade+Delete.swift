@@ -7,19 +7,35 @@
 
 import Foundation
 
-fileprivate var default_keyspace = "_default_".data(using: .utf8)!
+fileprivate var default_keyspace = "default"
+fileprivate var default_partition = "default"
 
 extension Switchblade: SwitchbadeRemove {
     
     @discardableResult public func remove<T>(_ object: T) -> Bool where T : Identifiable {
         if let keyspaceObject = object as? KeyspaceIdentifiable {
-            if provider.delete(key: object.key.key(), keyspace: keyspaceObject.keyspace.data(using: .utf8)!) {
+            if provider.delete(partition: default_partition, key: object.key.key(), keyspace: keyspaceObject.keyspace) {
                 notify(key: object.key, keyspace: keyspaceObject.keyspace)
                 return true
             }
         } else {
-            if provider.delete(key: object.key.key(), keyspace: default_keyspace) {
-                notify(key: object.key, keyspace: "_default_")
+            if provider.delete(partition: default_partition, key: object.key.key(), keyspace: default_keyspace) {
+                notify(key: object.key, keyspace: default_keyspace)
+                return true
+            }
+        }
+        return false
+    }
+    
+    @discardableResult public func remove<T>(partition: String, _ object: T) -> Bool where T : Identifiable {
+        if let keyspaceObject = object as? KeyspaceIdentifiable {
+            if provider.delete(partition: partition, key: object.key.key(), keyspace: keyspaceObject.keyspace) {
+                notify(key: object.key, keyspace: keyspaceObject.keyspace)
+                return true
+            }
+        } else {
+            if provider.delete(partition: partition, key: object.key.key(), keyspace: default_keyspace) {
+                notify(key: object.key, keyspace: default_keyspace)
                 return true
             }
         }
@@ -27,23 +43,47 @@ extension Switchblade: SwitchbadeRemove {
     }
     
     @discardableResult public func remove<T>(keyspace: String, _ object: T) -> Bool where T : Identifiable {
-        if provider.delete(key: object.key.key(), keyspace: keyspace.data(using: .utf8)!) {
+        if provider.delete(partition: default_partition, key: object.key.key(), keyspace: keyspace) {
             notify(key: object.key, keyspace: keyspace)
             return true
         }
         return false
     }
     
-    @discardableResult public func remove(key: KeyType) -> Bool {
-        if provider.delete(key: key.key(), keyspace: default_keyspace) {
-            notify(key: key, keyspace: "_default_")
+    @discardableResult public func remove<T>(partition: String, keyspace: String, _ object: T) -> Bool where T : Identifiable {
+        if provider.delete(partition: partition, key: object.key.key(), keyspace: keyspace) {
+            notify(key: object.key, keyspace: keyspace)
             return true
         }
         return false
     }
     
-    @discardableResult public func remove(key: KeyType, keyspace: String) -> Bool {
-        if provider.delete(key: key.key(), keyspace: keyspace.data(using: .utf8)!) {
+    @discardableResult public func remove(key: PrimaryKeyType) -> Bool {
+        if provider.delete(partition: default_partition, key: key.key(), keyspace: default_keyspace) {
+            notify(key: key, keyspace: default_keyspace)
+            return true
+        }
+        return false
+    }
+    
+    @discardableResult public func remove(partition: String, key: PrimaryKeyType) -> Bool {
+        if provider.delete(partition: partition, key: key.key(), keyspace: default_keyspace) {
+            notify(key: key, keyspace: default_keyspace)
+            return true
+        }
+        return false
+    }
+    
+    @discardableResult public func remove(key: PrimaryKeyType, keyspace: String) -> Bool {
+        if provider.delete(partition: default_partition, key: key.key(), keyspace: keyspace) {
+            notify(key: key, keyspace: keyspace)
+            return true
+        }
+        return false
+    }
+    
+    @discardableResult public func remove(partition: String, key: PrimaryKeyType, keyspace: String) -> Bool {
+        if provider.delete(partition: partition, key: key.key(), keyspace: keyspace) {
             notify(key: key, keyspace: keyspace)
             return true
         }
@@ -52,8 +92,17 @@ extension Switchblade: SwitchbadeRemove {
     
     @discardableResult public func remove(_ compositeKeys: [CompositeComponent]) -> Bool {
         let key = makeCompositeKey(compositeKeys)
-        if provider.delete(key: key.data(using: .utf8)!, keyspace: default_keyspace) {
-            notify(key: key, keyspace: "_default_")
+        if provider.delete(partition: default_partition, key: key.key(), keyspace: default_keyspace) {
+            notify(key: key, keyspace: default_keyspace)
+            return true
+        }
+        return false
+    }
+    
+    @discardableResult public func remove(partition: String, _ compositeKeys: [CompositeComponent]) -> Bool {
+        let key = makeCompositeKey(compositeKeys)
+        if provider.delete(partition: partition, key: key.key(), keyspace: default_keyspace) {
+            notify(key: key, keyspace: default_keyspace)
             return true
         }
         return false

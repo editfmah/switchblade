@@ -14,7 +14,7 @@ func initSQLiteDatabase(_ config: SwitchbladeConfig? = nil) -> Switchblade {
     let path = FileManager.default.currentDirectoryPath
     let id = UUID().uuidString
     print("Database Opened: \(path)/\(id).db")
-    let db = Switchblade(provider: SQLiteHighPerformanceProvider(path: "\(path)/\(id).db"), configuration: config) { (success, provider, error) in
+    let db = Switchblade(provider: SQLiteProvider(path: "\(path)/\(id).db"), configuration: config) { (success, provider, error) in
         XCTAssert(error == nil, "failed to initialiase")
     }
     return db

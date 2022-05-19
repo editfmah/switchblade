@@ -7,28 +7,28 @@
 
 import Foundation
 
-public protocol KeyType {
-    func key() -> Data
+public protocol PrimaryKeyType {
+    func key() -> String
 }
 
-extension Int : KeyType {
-    public func key() -> Data {
-        return "\(self)".data(using: .utf8) ?? Data()
+extension Int : PrimaryKeyType {
+    public func key() -> String {
+        return "\(self)"
     }
 }
 
-extension UUID : KeyType {
-    public func key() -> Data {
-        return "\(self)".data(using: .utf8) ?? Data()
+extension UUID : PrimaryKeyType {
+    public func key() -> String {
+        return self.uuidString.lowercased()
     }
 }
 
-extension String : KeyType {
-    public func key() -> Data {
-        return self.data(using: .utf8) ?? Data()
+extension String : PrimaryKeyType {
+    public func key() -> String {
+        return self
     }
 }
 
 public protocol Identifiable {
-    var key: KeyType { get }
+    var key: PrimaryKeyType { get }
 }

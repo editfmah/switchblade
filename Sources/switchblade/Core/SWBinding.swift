@@ -7,7 +7,8 @@
 
 import Foundation
 
-fileprivate var default_keyspace = "_default_"
+fileprivate var default_keyspace = "default"
+fileprivate var default_partition = "default"
 
 public class SWBinding<T:Codable> : SwitchbladeBinding {
     
@@ -35,12 +36,12 @@ public class SWBinding<T:Codable> : SwitchbladeBinding {
     
     internal var id: UUID = UUID()
     private var blade: Switchblade
-    internal var key: KeyType?
+    internal var key: PrimaryKeyType?
     internal var keyspace: String?
     private var result: T?
     private var closure: ((T?)->Void)?
     
-    public init(_ switchblade: Switchblade, key: KeyType, keyspace: String? = nil,_ onChange: ((T?)->Void)? = nil) {
+    public init(_ switchblade: Switchblade, key: PrimaryKeyType, keyspace: String? = nil,_ onChange: ((T?)->Void)? = nil) {
         self.blade = switchblade
         self.key = key
         self.keyspace = keyspace ?? default_keyspace
@@ -68,7 +69,7 @@ public class SWBinding<T:Codable> : SwitchbladeBinding {
         closure = onAction
     }
     
-    public func setKey(key: KeyType, keyspace: String? = nil) {
+    public func setKey(key: PrimaryKeyType, keyspace: String? = nil) {
         self.key = key
         if let keyspace = keyspace {
             self.keyspace = keyspace
@@ -127,7 +128,7 @@ public class SWBindingCollection<T:Codable> : SwitchbladeBinding {
     
     internal var id: UUID = UUID()
     private var blade: Switchblade
-    internal var key: KeyType?
+    internal var key: PrimaryKeyType?
     internal var keyspace: String?
     private var result: [T] = []
     private var closure: (([T])->Void)?
