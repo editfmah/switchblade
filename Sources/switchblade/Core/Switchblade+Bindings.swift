@@ -8,6 +8,14 @@
 import Foundation
 
 extension Switchblade : SwitchbadeBinder {
+
+    public func bind<T>(where: @escaping ((T) -> Bool), _ onChange: (([T]) -> Void)?) -> SWBindingCollection<T> where T : Decodable, T : Encodable {
+        return SWBindingCollection<T>(self, where: `where`, onChange)
+    }
+    
+    public func bind<T>(keyspace: String, where: @escaping ((T) -> Bool), _ onChange: (([T]) -> Void)?) -> SWBindingCollection<T> where T : Decodable, T : Encodable {
+        return SWBindingCollection<T>(self, keyspace: keyspace, where: `where`, onChange)
+    }
     
     // object getters/updaters
     public func bind<T>(key: PrimaryKeyType,_ onChange: ((T?)->Void)? = nil) -> SWBinding<T> where T : Decodable, T : Encodable {
@@ -29,14 +37,6 @@ extension Switchblade : SwitchbadeBinder {
     
     public func bind<T>(keyspace: String, _ onChange: (([T]) -> Void)? = nil) -> SWBindingCollection<T> where T : Decodable, T : Encodable {
         return SWBindingCollection<T>(self, keyspace: keyspace, onChange)
-    }
-    
-    public func bind<T>(parameters: [param], _ onChange: (([T]) -> Void)? = nil) -> SWBindingCollection<T> where T : Decodable, T : Encodable {
-        return SWBindingCollection<T>(self, parameters: parameters, onChange)
-    }
-    
-    public func bind<T>(keyspace: String, parameters: [param], _ onChange: (([T]) -> Void)? = nil) -> SWBindingCollection<T> where T : Decodable, T : Encodable {
-        return SWBindingCollection<T>(self, keyspace: keyspace, parameters: parameters, onChange)
     }
     
     // notifiers

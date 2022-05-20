@@ -17,16 +17,12 @@ public protocol DataProvider {
     @discardableResult func put<T: Codable>(partition: String, key: String, keyspace: String, ttl: Int, _ object: T) -> Bool
     @discardableResult func delete(partition: String, key: String, keyspace: String) -> Bool
     @discardableResult func get<T:Codable>(partition: String, key: String, keyspace: String) -> T?
-    @discardableResult func query<T: Codable>(partition: String, keyspace: String, params: [param]?) -> [T]
+    @discardableResult func query<T: Codable>(partition: String, keyspace: String, map: ((T) -> Bool)) -> [T]
     @discardableResult func all<T: Codable>(partition: String, keyspace: String) -> [T]
     
     func iterate<T: Codable>(partition: String, keyspace: String, iterator: ((T) -> Void))
-
+    
     var config: SwitchbladeConfig! { get set }
     var blade: Switchblade! { get set }
     
-}
-
-internal protocol DataProviderPrivate {
-    @discardableResult func put(partition: String, key: String, keyspace: String, object: Data?, queryKeys: [Data]?, ttl: Int) -> Bool
 }

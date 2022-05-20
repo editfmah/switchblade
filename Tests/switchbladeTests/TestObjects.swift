@@ -8,11 +8,7 @@
 import Foundation
 import Switchblade
 
-public class Person : Codable, Identifiable, KeyspaceIdentifiable, Queryable {
-    
-    public var queryableItems: [String : Any?] {
-        return ["name" : self.Name, "age" : self.Age, "department" : self.DepartmentId]
-    }
+public class Person : Codable, Identifiable, KeyspaceIdentifiable {
     
     public var key: PrimaryKeyType {
         return self.PersonId

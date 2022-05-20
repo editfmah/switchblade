@@ -14,8 +14,8 @@ public protocol SwitchbadeBinder {
     @discardableResult func bind<T: Codable>(key: PrimaryKeyType, keyspace: String,_ onChange: ((T?)->Void)?) -> SWBinding<T>
     @discardableResult func bind<T: Codable>(_ onChange: (([T])->Void)?) -> SWBindingCollection<T>
     @discardableResult func bind<T: Codable>(keyspace: String,_ onChange: (([T])->Void)?) -> SWBindingCollection<T>
-    @discardableResult func bind<T: Codable>(parameters:[param],_ onChange: (([T])->Void)?) -> SWBindingCollection<T>
-    @discardableResult func bind<T: Codable>(keyspace: String, parameters:[param],_ onChange: (([T])->Void)?) -> SWBindingCollection<T>
+    @discardableResult func bind<T: Codable>(where: @escaping ((T) -> Bool),_ onChange: (([T])->Void)?) -> SWBindingCollection<T>
+    @discardableResult func bind<T: Codable>(keyspace: String, where: @escaping  ((T) -> Bool),_ onChange: (([T])->Void)?) -> SWBindingCollection<T>
     
 }
 

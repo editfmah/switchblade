@@ -11,7 +11,7 @@ import Foundation
 import Dispatch
 import CryptoSwift
 
-public class UserDefaultsProvider: DataProvider, DataProviderPrivate {
+public class UserDefaultsProvider: DataProvider {
         
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
@@ -63,11 +63,6 @@ public class UserDefaultsProvider: DataProvider, DataProviderPrivate {
         return true
     }
     
-    func put(partition: String, key: String, keyspace: String, object: Data?, queryKeys: [Data]?, ttl: Int) -> Bool {
-        defaults.set(object, forKey: makeId(key))
-        return true
-    }
-    
     public func delete(partition: String, key: String, keyspace: String) -> Bool {
         let id = makeId(key)
         defaults.removeObject(forKey: id)
@@ -98,8 +93,13 @@ public class UserDefaultsProvider: DataProvider, DataProviderPrivate {
         return nil
     }
     
-    public func query<T>(partition: String, keyspace: String, params: [param]?) -> [T] where T : Decodable, T : Encodable {
-        let results: [T] = []
+    public func query<T>(partition: String, keyspace: String, map: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
+        var results: [T] = []
+        for o: T in all(partition: partition, keyspace: keyspace) {
+            if map(o) {
+                results.append(o)
+            }
+        }
         return results
     }
     

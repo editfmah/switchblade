@@ -132,7 +132,7 @@ public class SWBindingCollection<T:Codable> : SwitchbladeBinding {
     internal var keyspace: String?
     private var result: [T] = []
     private var closure: (([T])->Void)?
-    private var parameters: [param]?
+    private var `where`: ((T) -> Bool)?
     
     init(_ switchblade: Switchblade, keyspace: String? = nil,_ onChange: (([T])->Void)? = nil) {
         self.blade = switchblade
@@ -142,18 +142,18 @@ public class SWBindingCollection<T:Codable> : SwitchbladeBinding {
         update(true)
     }
     
-    public init(_ switchblade: Switchblade, keyspace: String, parameters: [param]? = nil,_ onChange: (([T])->Void)? = nil) {
+    public init(_ switchblade: Switchblade, keyspace: String, where: ((T) -> Bool)? = nil,_ onChange: (([T])->Void)? = nil) {
         self.blade = switchblade
         self.keyspace = keyspace
-        self.parameters = parameters
+        self.where = `where`
         self.closure = onChange
         blade.registerBinding(self)
         update(true)
     }
     
-    public init(_ switchblade: Switchblade, parameters: [param],_ onChange: (([T])->Void)? = nil) {
+    public init(_ switchblade: Switchblade, where: @escaping ((T) -> Bool), _ onChange: (([T])->Void)? = nil) {
         self.blade = switchblade
-        self.parameters = parameters
+        self.where = `where`
         self.keyspace = keyspace ?? default_keyspace
         self.closure = onChange
         blade.registerBinding(self)
@@ -164,19 +164,19 @@ public class SWBindingCollection<T:Codable> : SwitchbladeBinding {
         closure = onAction
     }
     
-    public func setKeyspace(keyspace: String? = nil, parameters: [param]? = nil) {
+    public func setKeyspace(keyspace: String? = nil, where: ((T) -> Bool)? = nil) {
         self.keyspace = keyspace ?? default_keyspace
-        if parameters != nil {
-            self.parameters = parameters
+        if let `where` = `where` {
+            self.where = `where`
         }
         update(false)
     }
     
     fileprivate func update(_ initial: Bool) {
         // work out which kind of update we are after Key, Keyspace, Key & Keyspace
-        if let parameters = parameters {
+        if let `where` = self.where {
             // parameter query for keyspace
-            result = blade.query(keyspace: keyspace ?? default_keyspace, parameters: parameters)
+            result = blade.query(keyspace: keyspace ?? default_keyspace, `where`)
             if !initial {
                 self.closure?(result)
             }

@@ -164,7 +164,9 @@ extension switchbladeTests {
                 p3.Name = "George Smith"
                 p3.Age = 28
                 if db.put(p3) {
-                    let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41)])
+                    let results: [Person] = db.query(keyspace: p1.keyspace) { person in
+                        return person.Age == 41
+                    }
                     if results.count == 1 {
                         if let result = results.first, result.Name == "Adrian Herridge" {
                             return
@@ -197,7 +199,9 @@ extension switchbladeTests {
                 p3.Name = "George Smith"
                 p3.Age = 28
                 if db.put(p3) {
-                    let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41),.where("name", .equals, "Adrian Herridge")])
+                    let results: [Person] = db.query(keyspace: p1.keyspace) { result in
+                        return result.Age == 41 && result.Name == "Adrian Herridge"
+                    }
                     if results.count == 1 {
                         if let result = results.first, result.Name == "Adrian Herridge" {
                             return
@@ -268,7 +272,9 @@ extension switchbladeTests {
         p1.Name = "Adrian Herridge"
         p1.Age = 41
         if db.put(p1) {
-            let retrieved: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41)])
+            let retrieved: [Person] = db.query(keyspace: p1.keyspace) { result in
+                return result.Age == 41
+            }
             if retrieved.count == 1 {
                 
             } else {
@@ -297,7 +303,9 @@ extension switchbladeTests {
         p3.Age = 28
         db.put(p3)
         
-        let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .equals, 41)])
+        let results: [Person] = db.query(keyspace: p1.keyspace) { result in
+            return result.Age == 41
+        }
         if results.count == 1 {
             if let result = results.first, result.Name == "Adrian Herridge" {
                 return
@@ -325,7 +333,9 @@ extension switchbladeTests {
         p3.Age = 28
         db.put(p3)
         
-        let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .greater, 30)])
+        let results: [Person] = db.query(keyspace: p1.keyspace) { p in
+            return p.Age ?? 0 > 30
+        }
         if results.count == 2 {
             return
         }
@@ -351,7 +361,12 @@ extension switchbladeTests {
         p3.Age = 28
         db.put(p3)
         
-        let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .less, 40)])
+        let results: [Person] = db.query(keyspace: p1.keyspace) { p in
+            if let age = p.Age {
+                return age < 40
+            }
+            return false
+        }
         if results.count == 2 {
             return
         }
@@ -377,7 +392,9 @@ extension switchbladeTests {
         p3.Age = 28
         db.put(p3)
         
-        let results: [Person] = db.query(keyspace: p1.keyspace, parameters: [.where("age", .isnull, nil),.where("name", .equals, "Neil Bostrom")])
+        let results: [Person] = db.query(keyspace: p1.keyspace) { p in
+            return p.Name == "Neil Bostrom" && p.Age == nil
+        }
         if results.count == 1 {
             if let result = results.first, result.Name == "Neil Bostrom" {
                 return
@@ -391,7 +408,6 @@ extension switchbladeTests {
         
         var pass = false
         
-        
         let db = initSQLiteDatabase()
         db.perform {
             let p1 = Person()
@@ -399,7 +415,9 @@ extension switchbladeTests {
             p1.Age = 41
             db.put(p1)
         }.finally {
-            let results: [Person] = db.query(keyspace: "person", parameters: [.where("age", .equals, 41)])
+            let results: [Person] = db.query(keyspace: "person") { p in
+                return p.Age == 41
+            }
             if results.count == 1 {
                 if let result = results.first, result.Name == "Adrian Herridge" {
                     pass = true
@@ -593,7 +611,9 @@ extension switchbladeTests {
         p1.Age = 40
         db.put(p1)
         
-        let binding = SWBindingCollection<Person>(db, keyspace: p1.keyspace, parameters: [.where("age", .equals, 40)])
+        let binding = SWBindingCollection<Person>(db, keyspace: p1.keyspace) { (p: Person) in
+            return p.Age == 40
+        }
         
         if binding.count != 1 {
             XCTFail("failed state in binding")
@@ -806,6 +826,40 @@ extension switchbladeTests {
                 }
             }
         }
+        XCTFail("failed to write one of the records")
+    }
+    
+    func testTTLTimeout() {
+        
+        let db = initSQLiteDatabase()
+        
+        let p1 = Person()
+        let p2 = Person()
+        let p3 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 41
+        
+        p2.Name = "Neil Bostrom"
+        p2.Age = 38
+        
+        p3.Name = "George Smith"
+        p3.Age = 28
+        
+        let _ = db.put(ttl: 1, p1)
+        let _ = db.put(ttl: 60, p2)
+        let _ = db.put(p3)
+        
+        Thread.sleep(forTimeInterval: 2.0)
+        
+        let results: [Person] = db.all(keyspace: p1.keyspace)
+        
+        if results.count == 2 {
+            return
+        } else {
+            XCTFail("failed to read back the correct number of records")
+        }
+        
         XCTFail("failed to write one of the records")
     }
     
