@@ -12,7 +12,7 @@ import Dispatch
 import CryptoSwift
 
 public class UserDefaultsProvider: DataProvider, DataProviderPrivate {
-    
+        
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
     fileprivate var lock = Mutex()
@@ -104,6 +104,7 @@ public class UserDefaultsProvider: DataProvider, DataProviderPrivate {
     }
     
     public func all<T>(partition: String, keyspace: String) -> [T] where T : Decodable, T : Encodable {
+        
         var results: [T] = []
         for (id, _) in defaults.dictionaryRepresentation() {
             if config.aes256encryptionKey == nil {
@@ -115,11 +116,14 @@ public class UserDefaultsProvider: DataProvider, DataProviderPrivate {
                     let key = encKey.sha256()
                     let iv = (encKey + Data(kSaltValue.bytes)).md5()
                     do {
+                        
                         let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
                         let decryptedBytes = try aes.decrypt(data.bytes)
                         let decryptedData = Data(decryptedBytes)
                         let object = try decoder.decode(T.self, from: decryptedData)
+                        
                         results.append(object)
+                        
                     } catch {
                         print("encryption error: \(error)")
                     }
@@ -127,6 +131,35 @@ public class UserDefaultsProvider: DataProvider, DataProviderPrivate {
             }
         }
         return results
+    }
+    
+    public func iterate<T>(partition: String, keyspace: String, iterator: ((T) -> Void)) where T : Decodable, T : Encodable {
+        
+        for (id, _) in defaults.dictionaryRepresentation() {
+            if config.aes256encryptionKey == nil {
+                if let data = defaults.data(forKey: id), let object = try? decoder.decode(T.self, from: data) {
+                    iterator(object)
+                }
+            } else {
+                if let data = defaults.data(forKey: id), let encKey = config.aes256encryptionKey {
+                    let key = encKey.sha256()
+                    let iv = (encKey + Data(kSaltValue.bytes)).md5()
+                    do {
+                        
+                        let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
+                        let decryptedBytes = try aes.decrypt(data.bytes)
+                        let decryptedData = Data(decryptedBytes)
+                        let object = try decoder.decode(T.self, from: decryptedData)
+                        
+                        iterator(object)
+                        
+                    } catch {
+                        print("encryption error: \(error)")
+                    }
+                }
+            }
+        }
+        
     }
     
 }

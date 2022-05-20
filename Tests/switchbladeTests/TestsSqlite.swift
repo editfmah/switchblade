@@ -743,5 +743,71 @@ extension switchbladeTests {
         
     }
     
+    func testPersistMultipleIterate() {
+        
+        let db = initSQLiteDatabase()
+        
+        let p1 = Person()
+        let p2 = Person()
+        let p3 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 41
+        if db.put(p1) {
+            p2.Name = "Neil Bostrom"
+            p2.Age = 38
+            if db.put(p2) {
+                p3.Name = "George Smith"
+                p3.Age = 28
+                if db.put(p3) {
+                    var results: [Person] = []
+                    db.iterate(keyspace: p1.keyspace) { (person: Person) in
+                        results.append(person)
+                    }
+                    if results.count == 3 {
+                        return
+                    } else {
+                        XCTFail("failed to read back the correct number of records")
+                    }
+                }
+            }
+        }
+        XCTFail("failed to write one of the records")
+    }
+    
+    func testPersistMultipleIterateInspect() {
+        
+        let db = initSQLiteDatabase()
+        
+        let p1 = Person()
+        let p2 = Person()
+        let p3 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 41
+        if db.put(p1) {
+            p2.Name = "Neil Bostrom"
+            p2.Age = 38
+            if db.put(p2) {
+                p3.Name = "George Smith"
+                p3.Age = 28
+                if db.put(p3) {
+                    var results: [Person] = []
+                    db.iterate(keyspace: p1.keyspace) { (person: Person) in
+                        if person.Age == 38 {
+                            results.append(person)
+                        }
+                    }
+                    if results.count == 1 {
+                        return
+                    } else {
+                        XCTFail("failed to read back the correct number of records")
+                    }
+                }
+            }
+        }
+        XCTFail("failed to write one of the records")
+    }
+    
 }
 

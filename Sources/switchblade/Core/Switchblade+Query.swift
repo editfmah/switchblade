@@ -11,7 +11,7 @@ fileprivate var default_keyspace = "default"
 fileprivate var default_partition = "default"
 
 extension Switchblade : SwitchbadeRetriever {
-
+    
     public func all<T>(type: T, _ closure: (([T]) -> Void)) where T : Decodable, T : Encodable {
         let result: [T] = provider.all(partition: default_partition, keyspace: default_keyspace)
         closure(result)
@@ -152,6 +152,22 @@ extension Switchblade : SwitchbadeRetriever {
     public func query<T>(partition: String, keyspace: String, parameters: [param], _ closure: ([T]) -> [T])  -> [T] where T : Decodable, T : Encodable {
         let result: [T] = provider.query(partition: partition, keyspace: keyspace, params: parameters)
         return closure(result)
+    }
+    
+    public func iterate<T: Codable>(_ closure: @escaping ((T) -> Void))  {
+        provider.iterate(partition: default_partition, keyspace: default_keyspace, iterator: closure)
+    }
+    
+    public func iterate<T: Codable>(keyspace: String, _ closure: @escaping ((T) -> Void)) {
+        provider.iterate(partition: default_partition, keyspace: keyspace, iterator: closure)
+    }
+    
+    public func iterate<T: Codable>(partition: String, _ closure: @escaping ((T) -> Void))  {
+        provider.iterate(partition: partition, keyspace: default_keyspace, iterator: closure)
+    }
+    
+    public func iterate<T: Codable>(partition: String, keyspace: String, _ closure: @escaping ((T) -> Void)) {
+        provider.iterate(partition: partition, keyspace: keyspace, iterator: closure)
     }
     
 }

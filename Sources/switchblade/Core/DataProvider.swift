@@ -19,6 +19,8 @@ public protocol DataProvider {
     @discardableResult func get<T:Codable>(partition: String, key: String, keyspace: String) -> T?
     @discardableResult func query<T: Codable>(partition: String, keyspace: String, params: [param]?) -> [T]
     @discardableResult func all<T: Codable>(partition: String, keyspace: String) -> [T]
+    
+    func iterate<T: Codable>(partition: String, keyspace: String, iterator: ((T) -> Void))
 
     var config: SwitchbladeConfig! { get set }
     var blade: Switchblade! { get set }

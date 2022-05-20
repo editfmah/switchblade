@@ -17,15 +17,20 @@ public protocol SwitchbadeRetriever {
     @discardableResult func get<T:Codable>(key: PrimaryKeyType, keyspace: String) -> T?
     @discardableResult func all<T:Codable>() -> [T]
     @discardableResult func all<T:Codable>(keyspace: String) -> [T]
+    @discardableResult func all<T:Codable>(partition: String) -> [T]
+    @discardableResult func all<T:Codable>(partition: String, keyspace: String) -> [T]
     @discardableResult func query<T:Codable>(parameters:[param]) -> [T]
     @discardableResult func query<T:Codable>(keyspace: String, parameters:[param]) -> [T]
     @discardableResult func get<T:Codable>(_ compositeKeys: [CompositeComponent]) -> T?
-    
     @discardableResult func get<T:Codable>(partition: String, key: PrimaryKeyType) -> T?
     @discardableResult func get<T:Codable>(partition: String, key: PrimaryKeyType, keyspace: String) -> T?
-    @discardableResult func all<T:Codable>(partition: String) -> [T]
-    @discardableResult func all<T:Codable>(partition: String, keyspace: String) -> [T]
     @discardableResult func query<T:Codable>(partition: String, parameters:[param]) -> [T]
     @discardableResult func query<T:Codable>(partition: String, keyspace: String, parameters:[param]) -> [T]
     @discardableResult func get<T:Codable>(partition: String, _ compositeKeys: [CompositeComponent]) -> T?
+    
+    func iterate<T: Codable>(_ closure: @escaping ((_ object: T) -> Void))
+    func iterate<T: Codable>(keyspace: String, _ closure: @escaping ((_ object: T) -> Void))
+    func iterate<T: Codable>(partition: String, _ closure: @escaping ((_ object: T) -> Void))
+    func iterate<T: Codable>(partition: String, keyspace: String, _ closure: @escaping ((_ object: T) -> Void)) 
+    
 }

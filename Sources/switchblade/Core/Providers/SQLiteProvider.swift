@@ -15,7 +15,6 @@ fileprivate let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type
 
 public class SQLiteProvider: DataProvider, DataProviderPrivate {
     
-    
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
     fileprivate var lock = Mutex()
@@ -42,7 +41,7 @@ CREATE TABLE IF NOT EXISTS Data (
     partition TEXT,
     keyspace TEXT,
     id TEXT,
-    value BLOB,
+    value TEXT,
     ttl INTEGER,
     timestamp INT,
     querykey1 TEXT,
@@ -103,6 +102,59 @@ CREATE TABLE IF NOT EXISTS Data (
             
             sqlite3_finalize(stmt)
         }
+        
+    }
+    
+    fileprivate func iterate<T:Codable>(sql: String, params:[Any?], iterator: ( (T) -> Void)) {
+        
+        var values: [Any?] = []
+        for o in params {
+            values.append(o)
+        }
+        
+        var stmt: OpaquePointer?
+        if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
+            bind(stmt: stmt, params: values);
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                
+                let columns = sqlite3_column_count(stmt)
+                if columns > 0 {
+                    let i = 0
+                    switch sqlite3_column_type(stmt, Int32(i)) {
+                    case SQLITE_BLOB:
+                        let d = Data(bytes: sqlite3_column_blob(stmt, Int32(i)), count: Int(sqlite3_column_bytes(stmt, Int32(i))))
+                        if config.aes256encryptionKey == nil {
+                            if let object = try? decoder.decode(T.self, from: d) {
+                                iterator(object)
+                            }
+                        } else {
+                            // this data is to be stored encrypted
+                            if let encKey = config.aes256encryptionKey {
+                                let key = encKey.sha256()
+                                let iv = (encKey + Data(kSaltValue.bytes)).md5()
+                                do {
+                                    let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
+                                    let objectData = try aes.decrypt(d.bytes)
+                                    if let object = try? decoder.decode(T.self, from: Data(bytes: objectData, count: objectData.count)) {
+                                        iterator(object)
+                                    }
+                                } catch {
+                                    print("encryption error: \(error)")
+                                }
+                            }
+                        }
+                    default:
+                        break;
+                    }
+                }
+                
+            }
+        } else {
+            print(String(cString: sqlite3_errmsg(db)))
+            Switchblade.errors[blade.instance] = true
+        }
+        
+        sqlite3_finalize(stmt)
         
     }
     
@@ -518,7 +570,11 @@ CREATE TABLE IF NOT EXISTS Data (
         } catch  {
             return []
         }
-
+        
+    }
+    
+    public func iterate<T:Codable>(partition: String, keyspace: String, iterator: ((T) -> Void)) {
+        iterate(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? ORDER BY timestamp ASC;", params: [partition, keyspace], iterator: iterator)
     }
     
     @discardableResult
