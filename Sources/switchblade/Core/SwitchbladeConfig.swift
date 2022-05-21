@@ -11,4 +11,5 @@ public class SwitchbladeConfig {
     public var logDriver: SwitchbladeLogDriver?
     public var hashQueriableProperties: Bool = false
     public var aes256encryptionKey: Data? = nil
+    public var randomiseDataTableName: Bool = false
 }
