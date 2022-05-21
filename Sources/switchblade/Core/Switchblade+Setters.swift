@@ -139,7 +139,7 @@ extension Switchblade: SwitchbadePutter {
     
     @discardableResult public func put<T>(partition: String, _ compositeKeys: [CompositeComponent], ttl: Int? = nil, _ object: T) -> Bool where T : Decodable, T : Encodable {
         let key = makeCompositeKey(compositeKeys)
-        if provider.put(partition: default_partition, key: key.key(), keyspace: default_keyspace, ttl: ttl ?? -1, object) {
+        if provider.put(partition: partition, key: key.key(), keyspace: default_keyspace, ttl: ttl ?? -1, object) {
             notify(key: key, keyspace: default_partition)
             return true
         }
