@@ -54,6 +54,9 @@ CREATE TABLE IF NOT EXISTS Data (
 );
 """, params: [])
         
+        // indexes
+        _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_ttl ON Data (ttl);", params: [])
+        
         DispatchQueue.global(qos: .default).asyncAfter(deadline: .now() + 60, execute: {
             while self.db != nil {
                 try? self.execute(sql: "DELETE FROM Data WHERE ttl IS NOT NULL AND ttl < ?;", params: [ttl_now])
