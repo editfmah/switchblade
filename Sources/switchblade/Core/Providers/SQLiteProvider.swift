@@ -336,7 +336,7 @@ CREATE TABLE IF NOT EXISTS Data (
     public func get<T>(partition: String, key: String, keyspace: String) -> T? where T : Decodable, T : Encodable {
         do {
             if config.aes256encryptionKey == nil {
-                if let data = try query(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND id = ? AND (ttl IS NULL OR ttl >= ?)", params: [partition,keyspace,key,]).first, let objectData = data {
+                if let data = try query(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND id = ? AND (ttl IS NULL OR ttl >= ?)", params: [partition,keyspace,key,ttl_now]).first, let objectData = data {
                     let object = try decoder.decode(T.self, from: objectData)
                     return object
                 }
