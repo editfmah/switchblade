@@ -80,6 +80,10 @@ public class Switchblade : SwitchbladeInterface {
             completion?(false, DatabaseError.Unknown)
         }
     }
+    
+    public func getCurrentProvider() -> DataProvider {
+        return provider
+    }
  
 }
 
