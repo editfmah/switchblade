@@ -158,9 +158,9 @@ CREATE TABLE IF NOT EXISTS Data (
     
     public func query(sql: String, params:[Any?]) throws -> [(partition: String, keyspace: String, id: String, value: Data?)] {
         
-        if let results = try lock.throwingMutex ({ () -> [Data?] in
+        if let results = try lock.throwingMutex ({ () -> [(partition: String, keyspace: String, id: String, value: Data?)] in
             
-            var results: [Data?] = []
+            var results: [(partition: String, keyspace: String, id: String, value: Data?)] = []
             
             var values: [Any?] = []
             for o in params {
@@ -173,18 +173,21 @@ CREATE TABLE IF NOT EXISTS Data (
                 while sqlite3_step(stmt) == SQLITE_ROW {
                     
                     let columns = sqlite3_column_count(stmt)
-                    if columns > 0 {
+                    if columns > 3 {
+                        let partition = String.init(cString:sqlite3_column_text(stmt, Int32(0)))
+                        let keyspace = String.init(cString:sqlite3_column_text(stmt, Int32(1)))
+                        let id = String.init(cString:sqlite3_column_text(stmt, Int32(2)))
                         var value: Data?
-                        let i = 0
-                        switch sqlite3_column_type(stmt, Int32(i)) {
+                        switch sqlite3_column_type(stmt, Int32(3)) {
                         case SQLITE_BLOB:
-                            let d = Data(bytes: sqlite3_column_blob(stmt, Int32(i)), count: Int(sqlite3_column_bytes(stmt, Int32(i))))
+                            let d = Data(bytes: sqlite3_column_blob(stmt, Int32(3)), count: Int(sqlite3_column_bytes(stmt, Int32(3))))
                             value = d
                         default:
                             value = nil
                             break;
                         }
-                        results.append(value)
+                        
+                        results.append((partition: partition, keyspace: keyspace, id: id, value: value))
                     }
                     
                 }
@@ -336,12 +339,12 @@ CREATE TABLE IF NOT EXISTS Data (
     public func get<T>(partition: String, key: String, keyspace: String) -> T? where T : Decodable, T : Encodable {
         do {
             if config.aes256encryptionKey == nil {
-                if let data = try query(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND id = ? AND (ttl IS NULL OR ttl >= ?)", params: [partition,keyspace,key,ttl_now]).first, let objectData = data {
+                if let data = try query(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND id = ? AND (ttl IS NULL OR ttl >= ?)", params: [partition,keyspace,key,ttl_now]).first, let objectData = data.value {
                     let object = try decoder.decode(T.self, from: objectData)
                     return object
                 }
             } else {
-                if let data = try query(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND id = ? AND (ttl IS NULL OR ttl >= ?)", params: [partition,keyspace,key,ttl_now]).first, let objectData = data, let encKey = config.aes256encryptionKey {
+                if let data = try query(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND id = ? AND (ttl IS NULL OR ttl >= ?)", params: [partition,keyspace,key,ttl_now]).first, let objectData = data.value, let encKey = config.aes256encryptionKey {
                     let key = encKey.sha256()
                     let iv = (encKey + Data(kSaltValue.bytes)).md5()
                     do {
@@ -359,7 +362,7 @@ CREATE TABLE IF NOT EXISTS Data (
             debugPrint("SQLiteProvider Error:  Failed to decode stored object into type: \(T.self)")
             debugPrint("Error:")
             debugPrint(error)
-            if let data = try? query(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND id = ? AND (ttl IS NULL OR ttl >= ?)", params: [partition,keyspace,key, ttl_now]).first, let objectData = data, let body = String(data: objectData, encoding: .utf8) {
+            if let data = try? query(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND id = ? AND (ttl IS NULL OR ttl >= ?)", params: [partition,keyspace,key, ttl_now]).first, let objectData = data.value, let body = String(data: objectData, encoding: .utf8) {
                 
                 debugPrint("Object data:")
                 debugPrint(body)
@@ -383,15 +386,15 @@ CREATE TABLE IF NOT EXISTS Data (
     }
     
     public func iterate<T:Codable>(partition: String, keyspace: String, iterator: ((T) -> Void)) {
-        iterate(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) ORDER BY timestamp ASC;", params: [partition, keyspace, ttl_now], iterator: iterator)
+        iterate(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) ORDER BY timestamp ASC;", params: [partition, keyspace, ttl_now], iterator: iterator)
     }
     
     @discardableResult
     public func all<T>(partition: String, keyspace: String) -> [T] where T : Decodable, T : Encodable {
         do {
-            let data = try query(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) ORDER BY timestamp ASC;", params: [partition, keyspace, ttl_now])
+            let data = try query(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) ORDER BY timestamp ASC;", params: [partition, keyspace, ttl_now])
             var aggregation: [Data] = []
-            for d in data {
+            for d in data.map({ $0.value }) {
                 if config.aes256encryptionKey == nil {
                     if let objectData = d {
                         aggregation.append(objectData)
