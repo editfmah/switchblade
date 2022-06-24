@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS Data (
         
     }
     
-    public func query(sql: String, params:[Any?]) throws -> [Data?] {
+    public func query(sql: String, params:[Any?]) throws -> [(partition: String, keyspace: String, id: String, value: Data?)] {
         
         if let results = try lock.throwingMutex ({ () -> [Data?] in
             
