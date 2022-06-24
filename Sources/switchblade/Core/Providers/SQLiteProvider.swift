@@ -386,7 +386,7 @@ CREATE TABLE IF NOT EXISTS Data (
     }
     
     public func iterate<T:Codable>(partition: String, keyspace: String, iterator: ((T) -> Void)) {
-        iterate(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) ORDER BY timestamp ASC;", params: [partition, keyspace, ttl_now], iterator: iterator)
+        iterate(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) ORDER BY timestamp ASC;", params: [partition, keyspace, ttl_now], iterator: iterator)
     }
     
     @discardableResult
