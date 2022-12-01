@@ -26,3 +26,25 @@ public class Person : Codable, Identifiable, KeyspaceIdentifiable {
     
 }
 
+public class PersonVersion1 : Codable, SWSchemaVersioned {
+    
+    public static var version: (objectName: String, version: Int) = ("Person", 1)
+    
+    
+    public var id : UUID = UUID()
+    public var name: String?
+    public var age: Int?
+    
+}
+
+public class PersonVersion2 : Codable, SWSchemaVersioned {
+    
+    public static var version: (objectName: String, version: Int) = ("Person", 2)
+    
+    public var id : UUID = UUID()
+    public var forename: String?
+    public var surname: String?
+    public var age: Int?
+    
+}
+

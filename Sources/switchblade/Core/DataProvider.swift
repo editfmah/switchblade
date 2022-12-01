@@ -21,6 +21,7 @@ public protocol DataProvider {
     @discardableResult func all<T: Codable>(partition: String, keyspace: String) -> [T]
     
     func iterate<T: Codable>(partition: String, keyspace: String, iterator: ((T) -> Void))
+    func migrate<FromType: SWSchemaVersioned, ToType: SWSchemaVersioned>(from: FromType.Type, to: ToType.Type, migration: ((FromType) -> ToType?))
     
     var config: SwitchbladeConfig! { get set }
     var blade: Switchblade! { get set }

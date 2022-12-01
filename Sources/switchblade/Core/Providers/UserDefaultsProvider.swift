@@ -40,6 +40,10 @@ public class UserDefaultsProvider: DataProvider {
         return true
     }
 
+    public func migrate<FromType, ToType>(from: FromType.Type, to: ToType.Type, migration: ((FromType) -> ToType?)) where FromType : SWSchemaVersioned, ToType : SWSchemaVersioned {
+        
+    }
+    
     public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, _ object: T) -> Bool where T : Decodable, T : Encodable {
         if let jsonObject = try? JSONEncoder().encode(object) {
             let id = makeId(key)

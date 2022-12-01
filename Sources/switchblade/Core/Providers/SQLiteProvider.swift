@@ -50,12 +50,15 @@ CREATE TABLE IF NOT EXISTS Data (
     value BLOB,
     ttl INTEGER,
     timestamp INT,
+    model TEXT,
+    version INTEGER,
     PRIMARY KEY (partition,keyspace,id)
 );
 """, params: [])
         
         // indexes
         _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_ttl ON Data (ttl);", params: [])
+        _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_schema ON Data (model,version);", params: [])
         
         DispatchQueue.global(qos: .default).asyncAfter(deadline: .now() + 60, execute: {
             while self.db != nil {
@@ -135,6 +138,73 @@ CREATE TABLE IF NOT EXISTS Data (
                                     let objectData = try aes.decrypt(d.bytes)
                                     if let object = try? decoder.decode(T.self, from: Data(bytes: objectData, count: objectData.count)) {
                                         iterator(object)
+                                    }
+                                } catch {
+                                    print("encryption error: \(error)")
+                                }
+                            }
+                        }
+                    default:
+                        break;
+                    }
+                }
+                
+            }
+        } else {
+            print(String(cString: sqlite3_errmsg(db)))
+            Switchblade.errors[blade.instance] = true
+        }
+        
+        sqlite3_finalize(stmt)
+        
+    }
+    
+    fileprivate func migrate<T:SWSchemaVersioned>(iterator: ( (T) -> SWSchemaVersioned?)) {
+        
+        let fromInfo = T.version
+        let values: [Any?] = [fromInfo.objectName, fromInfo.version, ttl_now]
+        
+        let sql = "SELECT value, partition, keyspace, id, ttl FROM Data WHERE model = ? AND version = ? AND (ttl IS NULL or ttl >= ?)"
+        
+        var stmt: OpaquePointer?
+        if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
+            bind(stmt: stmt, params: values);
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                
+                let columns = sqlite3_column_count(stmt)
+                if columns > 0 {
+                    let partition = String.init(cString:sqlite3_column_text(stmt, Int32(1)))
+                    let keyspace = String.init(cString:sqlite3_column_text(stmt, Int32(2)))
+                    let id = String.init(cString:sqlite3_column_text(stmt, Int32(3)))
+                    var ttl: Int? = nil
+                    if sqlite3_column_type(stmt, Int32(4)) == SQLITE_INTEGER {
+                        ttl = Int(sqlite3_column_int64(stmt, Int32(4))) - ttl_now
+                    }
+                    switch sqlite3_column_type(stmt, Int32(0)) {
+                    case SQLITE_BLOB:
+                        let d = Data(bytes: sqlite3_column_blob(stmt, Int32(0)), count: Int(sqlite3_column_bytes(stmt, Int32(0))))
+                        if config.aes256encryptionKey == nil {
+                            if let object = try? decoder.decode(T.self, from: d) {
+                                if let newObject = iterator(object) {
+                                    let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, newObject)
+                                } else {
+                                    let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
+                                }
+                            }
+                        } else {
+                            // this data is to be stored encrypted
+                            if let encKey = config.aes256encryptionKey {
+                                let key = encKey.sha256()
+                                let iv = (encKey + Data(kSaltValue.bytes)).md5()
+                                do {
+                                    let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
+                                    let objectData = try aes.decrypt(d.bytes)
+                                    if let object = try? decoder.decode(T.self, from: Data(bytes: objectData, count: objectData.count)) {
+                                        if let newObject = iterator(object) {
+                                            let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, newObject)
+                                        } else {
+                                            let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
+                                        }
                                     }
                                 } catch {
                                     print("encryption error: \(error)")
@@ -287,13 +357,21 @@ CREATE TABLE IF NOT EXISTS Data (
             let id = makeId(key)
             do {
                 if config.aes256encryptionKey == nil {
-                    try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,timestamp) VALUES (?,?,?,?,?,?);",
+                    var model: String? = nil
+                    var version: Int? = nil
+                    if let info = (T.self as? SWSchemaVersioned.Type)?.version {
+                        model = info.objectName
+                        version = info.version
+                    }
+                    try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,timestamp,model,version) VALUES (?,?,?,?,?,?,?,?);",
                                 params: [
                                     partition,
                                     keyspace,
                                     id,
                                     jsonObject,ttl == -1 ? nil : Int(Date().timeIntervalSince1970) + ttl,
-                                    Int(Date().timeIntervalSince1970)
+                                    Int(Date().timeIntervalSince1970),
+                                    model,
+                                    version,
                                 ])
                 } else {
                     // this data is to be stored encrypted
@@ -303,14 +381,22 @@ CREATE TABLE IF NOT EXISTS Data (
                         do {
                             let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
                             let encryptedData = Data(try aes.encrypt(jsonObject.bytes))
-                            try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,timestamp) VALUES (?,?,?,?,?,?);",
+                            var model: String? = nil
+                            var version: Int? = nil
+                            if let info = (T.self as? SWSchemaVersioned.Type)?.version {
+                                model = info.objectName
+                                version = info.version
+                            }
+                            try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,timestamp,model,version) VALUES (?,?,?,?,?,?,?,?);",
                                         params: [
                                             partition,
                                             keyspace,
                                             id,
                                             encryptedData,
                                             ttl == -1 ? nil : Int(Date().timeIntervalSince1970) + ttl,
-                                            Int(Date().timeIntervalSince1970)
+                                            Int(Date().timeIntervalSince1970),
+                                            model,
+                                            version,
                                         ])
                         } catch {
                             print("encryption error: \(error)")
@@ -383,6 +469,10 @@ CREATE TABLE IF NOT EXISTS Data (
         }
         
         return results
+    }
+    
+    public func migrate<FromType: SWSchemaVersioned, ToType: SWSchemaVersioned>(from: FromType.Type, to: ToType.Type, migration: ((FromType) -> ToType?)) {
+        self.migrate(iterator: migration)
     }
     
     public func iterate<T:Codable>(partition: String, keyspace: String, iterator: ((T) -> Void)) {

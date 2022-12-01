@@ -863,5 +863,43 @@ extension switchbladeTests {
         XCTFail("failed to write one of the records")
     }
     
+    func testObjectMigration() {
+        
+        let db = initSQLiteDatabase()
+        
+        let id = UUID()
+        
+        let p1 = PersonVersion1()
+        p1.id = id
+        p1.name = "Adrian Herridge"
+        p1.age = 40
+        
+        if db.put(key: id, p1) {
+            if let _: PersonVersion1 = db.get(key: id) {
+                db.migrate(from: PersonVersion1.self, to: PersonVersion2.self) { old in
+                    
+                    let new = PersonVersion2()
+                    
+                    new.id = old.id
+                    new.age = old.age
+                    
+                    let components = old.name?.components(separatedBy: " ")
+                    new.forename = components?.first
+                    new.surname = components?.last
+                    
+                    return new
+                }
+                if let updated: PersonVersion2 = db.get(key: id) {
+                    if updated.forename == "Adrian" && updated.surname == "Herridge" {
+                        return
+                    }
+                }
+            }
+        }
+        
+        XCTFail("failed to write one of the records")
+        
+    }
+    
 }
 
