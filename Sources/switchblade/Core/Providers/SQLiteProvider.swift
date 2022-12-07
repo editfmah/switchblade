@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS Data (
                                     let objectData = try aes.decrypt(d.bytes)
                                     if let object = try? decoder.decode(T.self, from: Data(bytes: objectData, count: objectData.count)) {
                                         if let newObject = iterator(object), let codableObject = newObject as? Codable {
-                                            let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, newObject)
+                                            let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, codableObject)
                                         }
                                     }
                                 } catch {
