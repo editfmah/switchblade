@@ -185,8 +185,10 @@ CREATE TABLE IF NOT EXISTS Data (
                         let d = Data(bytes: sqlite3_column_blob(stmt, Int32(0)), count: Int(sqlite3_column_bytes(stmt, Int32(0))))
                         if config.aes256encryptionKey == nil {
                             if let object = try? decoder.decode(T.self, from: d) {
-                                if let newObject = iterator(object), let codableObject = newObject as? Codable {
-                                    let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, codableObject)
+                                if let newObject = iterator(object) {
+                                    let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, newObject)
+                                } else {
+                                    let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
                                 }
                             }
                         } else {
@@ -198,8 +200,10 @@ CREATE TABLE IF NOT EXISTS Data (
                                     let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
                                     let objectData = try aes.decrypt(d.bytes)
                                     if let object = try? decoder.decode(T.self, from: Data(bytes: objectData, count: objectData.count)) {
-                                        if let newObject = iterator(object), let codableObject = newObject as? Codable {
+                                        if let newObject = iterator(object) {
                                             let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, newObject)
+                                        } else {
+                                            let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
                                         }
                                     }
                                 } catch {
