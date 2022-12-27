@@ -52,10 +52,15 @@ CREATE TABLE IF NOT EXISTS Data (
     timestamp INT,
     model TEXT,
     version INTEGER,
+    filter TEXT,
     PRIMARY KEY (partition,keyspace,id)
 );
 """, params: [])
         
+//        _ = try self.execute(sql: "ALTER TABLE Data ADD COLUMN model TEXT;", params: [])
+//        _ = try self.execute(sql: "ALTER TABLE Data ADD COLUMN version INTEGER;", params: [])
+//        _ = try self.execute(sql: "ALTER TABLE Data ADD COLUMN filter TEXT;", params: [])
+//        
         // indexes
         _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_ttl ON Data (ttl);", params: [])
         _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_schema ON Data (model,version);", params: [])
@@ -159,12 +164,12 @@ CREATE TABLE IF NOT EXISTS Data (
         
     }
     
-    fileprivate func migrate<T:SWSchemaVersioned>(iterator: ( (T) -> SWSchemaVersioned?)) {
+    fileprivate func migrate<T:SchemaVersioned>(iterator: ( (T) -> SchemaVersioned?)) {
         
         let fromInfo = T.version
         let values: [Any?] = [fromInfo.objectName, fromInfo.version, ttl_now]
         
-        let sql = "SELECT value, partition, keyspace, id, ttl FROM Data WHERE model = ? AND version = ? AND (ttl IS NULL or ttl >= ?)"
+        let sql = "SELECT value, partition, keyspace, id, ttl, filter FROM Data WHERE model = ? AND version = ? AND (ttl IS NULL or ttl >= ?)"
         
         var stmt: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
@@ -180,13 +185,17 @@ CREATE TABLE IF NOT EXISTS Data (
                     if sqlite3_column_type(stmt, Int32(4)) == SQLITE_INTEGER {
                         ttl = Int(sqlite3_column_int64(stmt, Int32(4))) - ttl_now
                     }
+                    var filter: String? = nil
+                    if sqlite3_column_type(stmt, Int32(5)) == SQLITE_TEXT {
+                        filter = String.init(cString:sqlite3_column_text(stmt, Int32(5)))
+                    }
                     switch sqlite3_column_type(stmt, Int32(0)) {
                     case SQLITE_BLOB:
                         let d = Data(bytes: sqlite3_column_blob(stmt, Int32(0)), count: Int(sqlite3_column_bytes(stmt, Int32(0))))
                         if config.aes256encryptionKey == nil {
                             if let object = try? decoder.decode(T.self, from: d) {
                                 if let newObject = iterator(object) {
-                                    let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, newObject)
+                                    let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filter ?? "", newObject)
                                 } else {
                                     let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
                                 }
@@ -201,7 +210,7 @@ CREATE TABLE IF NOT EXISTS Data (
                                     let objectData = try aes.decrypt(d.bytes)
                                     if let object = try? decoder.decode(T.self, from: Data(bytes: objectData, count: objectData.count)) {
                                         if let newObject = iterator(object) {
-                                            let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, newObject)
+                                            let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filter ?? "", newObject)
                                         } else {
                                             let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
                                         }
@@ -351,7 +360,7 @@ CREATE TABLE IF NOT EXISTS Data (
         }
     }
     
-    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, _ object: T) -> Bool where T : Decodable, T : Encodable {
+    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, filter: String, _ object: T) -> Bool where T : Decodable, T : Encodable {
         
         if let jsonObject = try? JSONEncoder().encode(object) {
             let id = makeId(key)
@@ -359,11 +368,11 @@ CREATE TABLE IF NOT EXISTS Data (
                 if config.aes256encryptionKey == nil {
                     var model: String? = nil
                     var version: Int? = nil
-                    if let info = (T.self as? SWSchemaVersioned.Type)?.version {
+                    if let info = (T.self as? SchemaVersioned.Type)?.version {
                         model = info.objectName
                         version = info.version
                     }
-                    try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,timestamp,model,version) VALUES (?,?,?,?,?,?,?,?);",
+                    try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,timestamp,model,version,filter) VALUES (?,?,?,?,?,?,?,?,?);",
                                 params: [
                                     partition,
                                     keyspace,
@@ -372,6 +381,7 @@ CREATE TABLE IF NOT EXISTS Data (
                                     Int(Date().timeIntervalSince1970),
                                     model,
                                     version,
+                                    filter,
                                 ])
                 } else {
                     // this data is to be stored encrypted
@@ -383,11 +393,11 @@ CREATE TABLE IF NOT EXISTS Data (
                             let encryptedData = Data(try aes.encrypt(jsonObject.bytes))
                             var model: String? = nil
                             var version: Int? = nil
-                            if let info = (T.self as? SWSchemaVersioned.Type)?.version {
+                            if let info = (T.self as? SchemaVersioned.Type)?.version {
                                 model = info.objectName
                                 version = info.version
                             }
-                            try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,timestamp,model,version) VALUES (?,?,?,?,?,?,?,?);",
+                            try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,timestamp,model,version,filter) VALUES (?,?,?,?,?,?,?,?,?);",
                                         params: [
                                             partition,
                                             keyspace,
@@ -397,6 +407,7 @@ CREATE TABLE IF NOT EXISTS Data (
                                             Int(Date().timeIntervalSince1970),
                                             model,
                                             version,
+                                            filter,
                                         ])
                         } catch {
                             print("encryption error: \(error)")
@@ -457,13 +468,13 @@ CREATE TABLE IF NOT EXISTS Data (
         }
         return nil
     }
-    
+
     @discardableResult
-    public func query<T>(partition: String, keyspace: String, map where: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
+    public func query<T>(partition: String, keyspace: String, filter: [String : String]?, map: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
         var results: [T] = []
         
-        for result: T in all(partition: partition, keyspace: keyspace) {
-            if `where`(result) {
+        for result: T in all(partition: partition, keyspace: keyspace, filter: filter) {
+            if map(result) {
                 results.append(result)
             }
         }
@@ -471,18 +482,36 @@ CREATE TABLE IF NOT EXISTS Data (
         return results
     }
     
-    public func migrate<FromType: SWSchemaVersioned, ToType: SWSchemaVersioned>(from: FromType.Type, to: ToType.Type, migration: ((FromType) -> ToType?)) {
+    public func migrate<FromType: SchemaVersioned, ToType: SchemaVersioned>(from: FromType.Type, to: ToType.Type, migration: ((FromType) -> ToType?)) {
         self.migrate(iterator: migration)
     }
     
-    public func iterate<T:Codable>(partition: String, keyspace: String, iterator: ((T) -> Void)) {
-        iterate(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) ORDER BY timestamp ASC;", params: [partition, keyspace, ttl_now], iterator: iterator)
+    public func iterate<T>(partition: String, keyspace: String, filter: [String : String]?, iterator: ((T) -> Void)) where T : Decodable, T : Encodable {
+        
+        var f: String = ""
+        if let filter = filter, filter.isEmpty == false {
+            for kvp in filter {
+                let value = "\(kvp.key)=\(kvp.value)".md5()
+                f += " AND filter LIKE '%\(value)%' "
+            }
+        }
+        
+        iterate(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) \(f) ORDER BY timestamp ASC;", params: [partition, keyspace, ttl_now], iterator: iterator)
     }
     
     @discardableResult
-    public func all<T>(partition: String, keyspace: String) -> [T] where T : Decodable, T : Encodable {
+    public func all<T>(partition: String, keyspace: String, filter: [String : String]?) -> [T] where T : Decodable, T : Encodable {
         do {
-            let data = try query(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) ORDER BY timestamp ASC;", params: [partition, keyspace, ttl_now])
+            
+            var f: String = ""
+            if let filter = filter, filter.isEmpty == false {
+                for kvp in filter {
+                    let value = "\(kvp.key)=\(kvp.value)".md5()
+                    f += " AND filter LIKE '%\(value)%' "
+                }
+            }
+            
+            let data = try query(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) \(f) ORDER BY timestamp ASC;", params: [partition, keyspace, ttl_now])
             var aggregation: [Data] = []
             for d in data.map({ $0.value }) {
                 if config.aes256encryptionKey == nil {

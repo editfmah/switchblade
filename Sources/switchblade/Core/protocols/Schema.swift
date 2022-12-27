@@ -8,9 +8,9 @@
 import Foundation
 
 public protocol SwitchbladeVersioned {
-    func migrate<FromType, ToType>(from: FromType.Type, to: ToType.Type, migration: ((FromType) -> ToType?)) where FromType : SWSchemaVersioned, ToType : SWSchemaVersioned
+    func migrate<FromType, ToType>(from: FromType.Type, to: ToType.Type, migration: ((FromType) -> ToType?)) where FromType : SchemaVersioned, ToType : SchemaVersioned
 }
 
-public protocol SWSchemaVersioned where Self: Codable {
+public protocol SchemaVersioned where Self: Codable {
     static var version: (objectName: String, version: Int) { get }
 }

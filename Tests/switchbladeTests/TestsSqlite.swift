@@ -88,7 +88,7 @@ extension switchbladeTests {
         }
         XCTFail("failed to write one of the records")
     }
-
+    
     
     func testPersistMultipleObjectsAndCheckAll() {
         
@@ -724,13 +724,13 @@ extension switchbladeTests {
         
         p1.Name = "Adrian Herridge"
         p1.Age = 40
-        if db.put(["ad",1,"testing123"],p1) {
+        if db.put(compositeKeys: ["ad",1,"testing123"],p1) {
             p2.Name = "Neil Bostrom"
             p2.Age = 37
-            if db.put(["bozzer",2,"testing123"],p2) {
+            if db.put(compositeKeys: ["bozzer",2,"testing123"],p2) {
                 p3.Name = "George Smith"
                 p3.Age = 28
-                if db.put(["george",3,"testing123"],p3) {
+                if db.put(compositeKeys: ["george",3,"testing123"],p3) {
                     return
                 }
             }
@@ -748,8 +748,8 @@ extension switchbladeTests {
         
         p1.Name = "Adrian Herridge"
         p1.Age = 40
-        if db.put(["ad",1,123,"test",p1.PersonId],p1) {
-            if let retrieved: Person = db.get(["ad",1,123,"test",p1.PersonId]) {
+        if db.put(compositeKeys: ["ad",1,123,"test",p1.PersonId],p1) {
+            if let retrieved: Person = db.get(compositeKeys: ["ad",1,123,"test",p1.PersonId]) {
                 print("retrieved item with id \(retrieved.PersonId)")
                 if retrieved.PersonId == p1.PersonId {
                     return
@@ -898,6 +898,154 @@ extension switchbladeTests {
         }
         
         XCTFail("failed to write one of the records")
+        
+    }
+    
+    func testFilter() {
+        
+        let db = initSQLiteDatabase()
+        
+        
+        let p1 = Person()
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        db.put(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "true"], p1)
+        
+        let p2 = Person()
+        p2.Name = "Adrian Herridge"
+        p2.Age = 40
+        db.put(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "true"], p2)
+        
+        let p3 = Person()
+        p3.Name = "Adrian Herridge"
+        p3.Age = 40
+        db.put(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "false"], p3)
+        
+        let results: [Person] = db.all(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "true"])
+        if results.count == 2 {
+            return
+        }
+        
+        XCTFail("failed to write one of the records")
+        
+    }
+    
+    func testFilterMultiple() {
+        
+        let db = initSQLiteDatabase()
+        
+        
+        let p1 = Person()
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        db.put(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "true", "extravar" : "123"], p1)
+        
+        let p2 = Person()
+        p2.Name = "Adrian Herridge"
+        p2.Age = 40
+        db.put(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "true"], p2)
+        
+        let p3 = Person()
+        p3.Name = "Adrian Herridge"
+        p3.Age = 40
+        db.put(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "false"], p3)
+        
+        let results: [Person] = db.all(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "true"])
+        if results.count == 2 {
+            return
+        }
+        
+        XCTFail("failed to write one of the records")
+        
+    }
+    
+    func testFilterMultipleAND() {
+        
+        let db = initSQLiteDatabase()
+        
+        
+        let p1 = Person()
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        db.put(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "true", "extravar" : "123"], p1)
+        
+        let p2 = Person()
+        p2.Name = "Adrian Herridge"
+        p2.Age = 40
+        db.put(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "true"], p2)
+        
+        let p3 = Person()
+        p3.Name = "Adrian Herridge"
+        p3.Age = 40
+        db.put(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "false"], p3)
+        
+        let results: [Person] = db.all(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "true", "extravar" : "123"])
+        if results.count == 1 {
+            return
+        }
+        
+        XCTFail("failed to write one of the records")
+        
+    }
+    
+    func testFilterMultipleNegative() {
+        
+        let db = initSQLiteDatabase()
+        
+        
+        let p1 = Person()
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        db.put(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "true", "extravar" : "1234"], p1)
+        
+        let p2 = Person()
+        p2.Name = "Adrian Herridge"
+        p2.Age = 40
+        db.put(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "true"], p2)
+        
+        let p3 = Person()
+        p3.Name = "Adrian Herridge"
+        p3.Age = 40
+        db.put(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "false"], p3)
+        
+        let results: [Person] = db.all(partition: "default", keyspace: p1.keyspace, filter: ["crazyvar" : "true", "extravar" : "123"])
+        if results.count == 0 {
+            return
+        }
+        
+        XCTFail("failed to write one of the records")
+        
+    }
+    
+    func testFilterProtocolConformance() {
+        
+        let db = initSQLiteDatabase()
+        
+        
+        let p1 = PersonFilterable()
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        db.put(p1)
+        
+        let p2 = PersonFilterable()
+        p2.Name = "Neil Bostrom"
+        p2.Age = 40
+        db.put(p2)
+        
+        let p3 = PersonFilterable()
+        p3.Name = "Sarah Herridge"
+        p3.Age = 40
+        db.put(p3)
+        
+        let results: [PersonFilterable] = db.all(keyspace: "person", filter: ["age" : "40"])
+        if results.count != 3 {
+            XCTFail("failed to get the correct filtered records")
+        }
+        
+        let results2: [PersonFilterable] = db.all(keyspace: "person", filter: ["name" : "Neil Bostrom"])
+        if results2.count != 1 {
+            XCTFail("failed to get the correct filtered records")
+        }
         
     }
     

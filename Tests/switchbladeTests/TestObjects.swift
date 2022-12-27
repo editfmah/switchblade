@@ -26,7 +26,31 @@ public class Person : Codable, Identifiable, KeyspaceIdentifiable {
     
 }
 
-public class PersonVersion1 : Codable, SWSchemaVersioned {
+public class PersonFilterable : Codable, Filterable, Identifiable, KeyspaceIdentifiable {
+    
+    public var filters: [String : String] {
+        get {
+            return ["type" : "person", "age" : "\(self.Age ?? 0)", "name" : self.Name ?? ""]
+        }
+    }
+    
+    public var key: PrimaryKeyType {
+        return self.PersonId
+    }
+    
+    public var keyspace: String {
+        return "person"
+    }
+    
+    init(){ PersonId = UUID() }
+    public var PersonId : UUID
+    public var Name: String?
+    public var Age: Int?
+    public var DepartmentId : UUID?
+    
+}
+
+public class PersonVersion1 : Codable, SchemaVersioned {
     
     public static var version: (objectName: String, version: Int) = ("Person", 1)
     
@@ -37,7 +61,7 @@ public class PersonVersion1 : Codable, SWSchemaVersioned {
     
 }
 
-public class PersonVersion2 : Codable, SWSchemaVersioned {
+public class PersonVersion2 : Codable, SchemaVersioned {
     
     public static var version: (objectName: String, version: Int) = ("Person", 2)
     

@@ -12,6 +12,7 @@ import Dispatch
 import CryptoSwift
 
 public class UserDefaultsProvider: DataProvider {
+    
         
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
@@ -40,11 +41,11 @@ public class UserDefaultsProvider: DataProvider {
         return true
     }
 
-    public func migrate<FromType, ToType>(from: FromType.Type, to: ToType.Type, migration: ((FromType) -> ToType?)) where FromType : SWSchemaVersioned, ToType : SWSchemaVersioned {
+    public func migrate<FromType, ToType>(from: FromType.Type, to: ToType.Type, migration: ((FromType) -> ToType?)) where FromType : SchemaVersioned, ToType : SchemaVersioned {
         
     }
     
-    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, _ object: T) -> Bool where T : Decodable, T : Encodable {
+    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, filter: String, _ object: T) -> Bool where T : Decodable, T : Encodable {
         if let jsonObject = try? JSONEncoder().encode(object) {
             let id = makeId(key)
             if config.aes256encryptionKey == nil {
@@ -96,10 +97,11 @@ public class UserDefaultsProvider: DataProvider {
         }
         return nil
     }
+
     
-    public func query<T>(partition: String, keyspace: String, map: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
+public func query<T>(partition: String, keyspace: String, filter: [String : String]?, map: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
         var results: [T] = []
-        for o: T in all(partition: partition, keyspace: keyspace) {
+        for o: T in all(partition: partition, keyspace: keyspace, filter: filter) {
             if map(o) {
                 results.append(o)
             }
@@ -107,7 +109,7 @@ public class UserDefaultsProvider: DataProvider {
         return results
     }
     
-    public func all<T>(partition: String, keyspace: String) -> [T] where T : Decodable, T : Encodable {
+public func all<T>(partition: String, keyspace: String, filter: [String : String]?) -> [T] where T : Decodable, T : Encodable {
         
         var results: [T] = []
         for (id, _) in defaults.dictionaryRepresentation() {
@@ -137,7 +139,7 @@ public class UserDefaultsProvider: DataProvider {
         return results
     }
     
-    public func iterate<T>(partition: String, keyspace: String, iterator: ((T) -> Void)) where T : Decodable, T : Encodable {
+    public func iterate<T>(partition: String, keyspace: String, filter: [String : String]?, iterator: ((T) -> Void)) where T : Decodable, T : Encodable {
         
         for (id, _) in defaults.dictionaryRepresentation() {
             if config.aes256encryptionKey == nil {

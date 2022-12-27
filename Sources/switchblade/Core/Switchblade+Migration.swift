@@ -8,7 +8,7 @@
 import Foundation
 
 extension Switchblade : SwitchbladeVersioned {
-    public func migrate<FromType, ToType>(from: FromType.Type, to: ToType.Type, migration: ((FromType) -> ToType?)) where FromType : SWSchemaVersioned, ToType : SWSchemaVersioned {
+    public func migrate<FromType, ToType>(from: FromType.Type, to: ToType.Type, migration: ((FromType) -> ToType?)) where FromType : SchemaVersioned, ToType : SchemaVersioned {
         provider.migrate(from: from, to: to, migration: migration)
     }
 }
