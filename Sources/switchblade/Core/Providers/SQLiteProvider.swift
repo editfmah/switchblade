@@ -57,10 +57,10 @@ CREATE TABLE IF NOT EXISTS Data (
 );
 """, params: [])
         
-//        _ = try self.execute(sql: "ALTER TABLE Data ADD COLUMN model TEXT;", params: [])
-//        _ = try self.execute(sql: "ALTER TABLE Data ADD COLUMN version INTEGER;", params: [])
-//        _ = try self.execute(sql: "ALTER TABLE Data ADD COLUMN filter TEXT;", params: [])
-//        
+        _ = try self.execute(sql: "ALTER TABLE Data ADD COLUMN model TEXT;", params: [], silent: true)
+        _ = try self.execute(sql: "ALTER TABLE Data ADD COLUMN version INTEGER;", params: [], silent: true)
+        _ = try self.execute(sql: "ALTER TABLE Data ADD COLUMN filter TEXT;", params: [], silent: true)
+        
         // indexes
         _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_ttl ON Data (ttl);", params: [])
         _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_schema ON Data (model,version);", params: [])
@@ -83,32 +83,60 @@ CREATE TABLE IF NOT EXISTS Data (
         return key
     }
     
-    public func execute(sql: String, params:[Any?]) throws {
+    public func execute(sql: String, params:[Any?], silent: Bool = false) throws {
         
-        try lock.throwingMutex {
-            var values: [Any?] = []
-            for o in params {
-                values.append(o)
-            }
+        if silent {
             
-            var stmt: OpaquePointer?
-            if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
-                
-                bind(stmt: stmt, params: values);
-                while sqlite3_step(stmt) != SQLITE_DONE {
-                    
+            lock.mutex {
+                var values: [Any?] = []
+                for o in params {
+                    values.append(o)
                 }
                 
-            } else {
-                // error in statement
-                debugPrint(String(cString: sqlite3_errmsg(db)))
-                Switchblade.errors[blade.instance] = true
-                throw DatabaseError.Execute(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
+                var stmt: OpaquePointer?
+                if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
+                    
+                    bind(stmt: stmt, params: values);
+                    while sqlite3_step(stmt) != SQLITE_DONE {
+                        
+                    }
+                    
+                } else {
+                    // error in statement
+                    debugPrint(String(cString: sqlite3_errmsg(db)))
+                }
+                
+                sqlite3_finalize(stmt)
             }
             
-            sqlite3_finalize(stmt)
+        } else {
+           
+            try lock.throwingMutex {
+                var values: [Any?] = []
+                for o in params {
+                    values.append(o)
+                }
+                
+                var stmt: OpaquePointer?
+                if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
+                    
+                    bind(stmt: stmt, params: values);
+                    while sqlite3_step(stmt) != SQLITE_DONE {
+                        
+                    }
+                    
+                } else {
+                    // error in statement
+                    debugPrint(String(cString: sqlite3_errmsg(db)))
+                    Switchblade.errors[blade.instance] = true
+                    throw DatabaseError.Execute(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
+                }
+                
+                sqlite3_finalize(stmt)
+            }
+            
         }
-        
+
     }
     
     fileprivate func iterate<T:Codable>(sql: String, params:[Any?], iterator: ( (T) -> Void)) {
