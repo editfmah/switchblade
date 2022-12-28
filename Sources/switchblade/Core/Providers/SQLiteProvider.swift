@@ -195,6 +195,14 @@ CREATE TABLE IF NOT EXISTS Data (
                         if config.aes256encryptionKey == nil {
                             if let object = try? decoder.decode(T.self, from: d) {
                                 if let newObject = iterator(object) {
+                                    if let filterable = newObject as? Filterable {
+                                        var newFilter = ""
+                                        for kvp in filterable.filters {
+                                            let value = "\(kvp.key)=\(kvp.value)".md5()
+                                            newFilter += " AND filter LIKE '%\(value)%' "
+                                        }
+                                        filter = newFilter
+                                    }
                                     let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filter ?? "", newObject)
                                 } else {
                                     let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
@@ -210,6 +218,14 @@ CREATE TABLE IF NOT EXISTS Data (
                                     let objectData = try aes.decrypt(d.bytes)
                                     if let object = try? decoder.decode(T.self, from: Data(bytes: objectData, count: objectData.count)) {
                                         if let newObject = iterator(object) {
+                                            if let filterable = newObject as? Filterable {
+                                                var newFilter = ""
+                                                for kvp in filterable.filters {
+                                                    let value = "\(kvp.key)=\(kvp.value)".md5()
+                                                    newFilter += " AND filter LIKE '%\(value)%' "
+                                                }
+                                                filter = newFilter
+                                            }
                                             let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filter ?? "", newObject)
                                         } else {
                                             let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
