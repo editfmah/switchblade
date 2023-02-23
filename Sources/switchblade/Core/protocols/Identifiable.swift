@@ -8,24 +8,24 @@
 import Foundation
 
 public protocol PrimaryKeyType {
-    func key() -> Data
+    func key() -> String
 }
 
 extension Int : PrimaryKeyType {
-    public func key() -> Data {
-        return "\(self)".md5Data
+    public func key() -> String {
+        return "\(self)"
     }
 }
 
 extension UUID : PrimaryKeyType {
-    public func key() -> Data {
-        return self.uuidString.lowercased().md5Data
+    public func key() -> String {
+        return self.uuidString.lowercased()
     }
 }
 
 extension String : PrimaryKeyType {
-    public func key() -> Data {
-        return self.md5Data
+    public func key() -> String {
+        return self
     }
 }
 

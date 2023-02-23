@@ -13,17 +13,6 @@ import CryptoSwift
 fileprivate let SQLITE_STATIC = unsafeBitCast(0, to: sqlite3_destructor_type.self)
 fileprivate let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
-internal extension String {
-    var md5Data : Data {
-        get {
-            if let d = self.data(using: .utf8) {
-                return d.md5()
-            }
-            return Data()
-        }
-    }
-}
-
 var ttl_now: Int {
     get {
         return Int(Date().timeIntervalSince1970)
@@ -55,9 +44,9 @@ public class SQLiteProvider: DataProvider {
         // tables
         _ = try self.execute(sql: """
 CREATE TABLE IF NOT EXISTS Data (
-    partition BLOB,
-    keyspace BLOB,
-    id BLOB,
+    partition TEXT COLLATE NOCASE,
+    keyspace TEXT COLLATE NOCASE,
+    id TEXT COLLATE NOCASE,
     value BLOB,
     ttl INTEGER,
     timestamp INT,
@@ -90,7 +79,7 @@ CREATE TABLE IF NOT EXISTS Data (
         db = nil;
     }
     
-    fileprivate func makeId(_ key: Data) -> Data {
+    fileprivate func makeId(_ key: String) -> String {
         return key
     }
     
@@ -217,9 +206,9 @@ CREATE TABLE IF NOT EXISTS Data (
                 
                 let columns = sqlite3_column_count(stmt)
                 if columns > 0 {
-                    let partition = Data(bytes: sqlite3_column_blob(stmt, Int32(1)), count: Int(sqlite3_column_bytes(stmt, Int32(1))))
-                    let keyspace = Data(bytes: sqlite3_column_blob(stmt, Int32(2)), count: Int(sqlite3_column_bytes(stmt, Int32(2))))
-                    let id = Data(bytes: sqlite3_column_blob(stmt, Int32(3)), count: Int(sqlite3_column_bytes(stmt, Int32(3))))
+                    let partition = String.init(cString:sqlite3_column_text(stmt, Int32(1)))
+                    let keyspace = String.init(cString:sqlite3_column_text(stmt, Int32(2)))
+                    let id = String.init(cString:sqlite3_column_text(stmt, Int32(3)))
                     var ttl: Int? = nil
                     if sqlite3_column_type(stmt, Int32(4)) == SQLITE_INTEGER {
                         ttl = Int(sqlite3_column_int64(stmt, Int32(4))) - ttl_now
@@ -415,7 +404,7 @@ CREATE TABLE IF NOT EXISTS Data (
         }
     }
     
-    public func put<T>(partition: Data, key: Data, keyspace: Data, ttl: Int, filter: String, _ object: T) -> Bool where T : Decodable, T : Encodable {
+    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, filter: String, _ object: T) -> Bool where T : Decodable, T : Encodable {
         
         if let jsonObject = try? JSONEncoder().encode(object) {
             let id = makeId(key)
@@ -478,7 +467,7 @@ CREATE TABLE IF NOT EXISTS Data (
         return false
     }
     
-    public func delete(partition: Data, key: Data, keyspace: Data) -> Bool {
+    public func delete(partition: String, key: String, keyspace: String) -> Bool {
         do {
             try execute(sql: "DELETE FROM Data WHERE partition = ? AND keyspace = ? AND id = ?;", params: [partition, keyspace, key])
             return true
@@ -488,7 +477,7 @@ CREATE TABLE IF NOT EXISTS Data (
     }
     
     @discardableResult
-    public func get<T>(partition: Data, key: Data, keyspace: Data) -> T? where T : Decodable, T : Encodable {
+    public func get<T>(partition: String, key: String, keyspace: String) -> T? where T : Decodable, T : Encodable {
         do {
             if config.aes256encryptionKey == nil {
                 if let data = try query(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND id = ? AND (ttl IS NULL OR ttl >= ?)", params: [partition,keyspace,key,ttl_now]).first, let objectData = data.value {
@@ -525,7 +514,7 @@ CREATE TABLE IF NOT EXISTS Data (
     }
 
     @discardableResult
-    public func query<T>(partition: Data, keyspace: Data, filter: [String : String]?, map: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
+    public func query<T>(partition: String, keyspace: String, filter: [String : String]?, map: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
         var results: [T] = []
         
         for result: T in all(partition: partition, keyspace: keyspace, filter: filter) {
@@ -541,7 +530,7 @@ CREATE TABLE IF NOT EXISTS Data (
         self.migrate(iterator: migration)
     }
     
-    public func iterate<T>(partition: Data, keyspace: Data, filter: [String : String]?, iterator: ((T) -> Void)) where T : Decodable, T : Encodable {
+    public func iterate<T>(partition: String, keyspace: String, filter: [String : String]?, iterator: ((T) -> Void)) where T : Decodable, T : Encodable {
         
         var f: String = ""
         if let filter = filter, filter.isEmpty == false {
@@ -555,7 +544,7 @@ CREATE TABLE IF NOT EXISTS Data (
     }
     
     @discardableResult
-    public func all<T>(partition: Data, keyspace: Data, filter: [String : String]?) -> [T] where T : Decodable, T : Encodable {
+    public func all<T>(partition: String, keyspace: String, filter: [String : String]?) -> [T] where T : Decodable, T : Encodable {
         do {
             
             var f: String = ""

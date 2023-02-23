@@ -55,7 +55,7 @@ extension Switchblade: SwitchbadePutter {
             return false
         }
         
-        if provider.put(partition: p.md5Data, key: k!.key(), keyspace: ks.md5Data, ttl: t, filter: filters.joined(separator: ","), object) {
+        if provider.put(partition: p, key: k!.key(), keyspace: ks, ttl: t, filter: filters.joined(separator: ","), object) {
             notify(key: k!, keyspace: ks)
             return true
         }
