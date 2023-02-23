@@ -44,9 +44,9 @@ public class SQLiteProvider: DataProvider {
         // tables
         _ = try self.execute(sql: """
 CREATE TABLE IF NOT EXISTS Data (
-    partition TEXT COLLATE NOCASE,
-    keyspace TEXT COLLATE NOCASE,
-    id TEXT COLLATE NOCASE,
+    partition TEXT,
+    keyspace TEXT,
+    id TEXT,
     value BLOB,
     ttl INTEGER,
     timestamp INT,
