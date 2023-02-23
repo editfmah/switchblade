@@ -1,5 +1,5 @@
 //
-//  SQLiteProvider.swift
+//  SQLiteMultiPartitionProvider.swift
 //
 //  Created by Adrian Herridge on 08/05/2019.
 //
@@ -19,7 +19,128 @@ fileprivate var ttl_now: Int {
     }
 }
 
-public class SQLiteProvider: DataProvider {
+public class SQLiteMultiPartitionProvider: DataProvider {
+    
+    fileprivate var blades: [String:SQLitePartitionProvider] = [:]
+    
+    public var config: SwitchbladeConfig!
+    public weak var blade: Switchblade!
+    fileprivate var bladeLock = Mutex()
+    fileprivate var cachedMigrations: [((SQLitePartitionProvider) -> Void)] = []
+    
+    var db: OpaquePointer?
+    private var folder: String?
+    let decoder: JSONDecoder = JSONDecoder()
+    
+    public init(folder: String)  {
+        self.folder = folder
+        try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
+    }
+    
+    public func open() throws {
+        
+    }
+    
+    fileprivate func create(partitionKey: String) -> SQLitePartitionProvider {
+        let newBlade = SQLitePartitionProvider(path: "\(folder!)/\(partitionKey).db")
+        newBlade.config = config
+        try? newBlade.open()
+        bladeLock.mutex {
+            blades[partitionKey] = newBlade
+        }
+        for m in cachedMigrations {
+            m(newBlade)
+        }
+        return newBlade
+    }
+    
+    fileprivate func getProvider(partitionKey: String) -> SQLitePartitionProvider {
+        var provider: SQLitePartitionProvider! = nil
+        bladeLock.mutex {
+            if let blade = blades[partitionKey] {
+                provider = blade
+            }
+        }
+        if provider == nil {
+            provider = create(partitionKey: partitionKey)
+        }
+        return provider!
+    }
+    
+    public func close() throws {
+        for b in blades {
+            try? b.value.close()
+        }
+    }
+    
+    public func transact(_ mode: transaction) -> Bool {
+        return true
+    }
+    
+    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, filter: String, _ object: T) -> Bool where T : Decodable, T : Encodable {
+        
+        let blade = getProvider(partitionKey: (partition+keyspace).md5())
+        return blade.put(key: key, ttl: ttl, filter: filter, object)
+        
+    }
+    
+    public func delete(partition: String, key: String, keyspace: String) -> Bool {
+        let blade = getProvider(partitionKey: (partition+keyspace).md5())
+        return blade.delete(key: key)
+    }
+    
+    @discardableResult
+    public func get<T>(partition: String, key: String, keyspace: String) -> T? where T : Decodable, T : Encodable {
+        let blade = getProvider(partitionKey: (partition+keyspace).md5())
+        return blade.get(key: key)
+    }
+
+    @discardableResult
+    public func query<T>(partition: String, keyspace: String, filter: [String : String]?, map: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
+        let blade = getProvider(partitionKey: (partition+keyspace).md5())
+        return blade.query(filter: filter, map: map)
+    }
+    
+    public func migrate<FromType: SchemaVersioned, ToType: SchemaVersioned>(from: FromType.Type, to: ToType.Type, migration: @escaping ((FromType) -> ToType?)) {
+        cachedMigrations.append { blade in
+            blade.migrate(from: from, to: to, migration: migration)
+        }
+    }
+    
+    public func iterate<T>(partition: String, keyspace: String, filter: [String : String]?, iterator: ((T) -> Void)) where T : Decodable, T : Encodable {
+        
+        let blade = getProvider(partitionKey: (partition+keyspace).md5())
+        blade.iterate(filter: filter, iterator: iterator)
+        
+    }
+    
+    @discardableResult
+    public func all<T>(partition: String, keyspace: String, filter: [String : String]?) -> [T] where T : Decodable, T : Encodable {
+        let blade = getProvider(partitionKey: (partition+keyspace).md5())
+        return blade.all(filter: filter)
+    }
+    
+    
+    
+}
+
+extension UUID{
+    public func asData() -> Data {
+        func asUInt8Array() -> [UInt8] {
+            let (u1,u2,u3,u4,u5,u6,u7,u8,u9,u10,u11,u12,u13,u14,u15,u16) = self.uuid
+            return [u1,u2,u3,u4,u5,u6,u7,u8,u9,u10,u11,u12,u13,u14,u15,u16]
+        }
+        return Data(asUInt8Array())
+    }
+}
+
+extension Data {
+    var bytes : [UInt8]{
+        return [UInt8](self)
+    }
+}
+
+fileprivate class SQLitePartitionProvider {
     
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
@@ -44,8 +165,6 @@ public class SQLiteProvider: DataProvider {
         // tables
         _ = try self.execute(sql: """
 CREATE TABLE IF NOT EXISTS Data (
-    partition TEXT,
-    keyspace TEXT,
     id TEXT,
     value BLOB,
     ttl INTEGER,
@@ -53,7 +172,7 @@ CREATE TABLE IF NOT EXISTS Data (
     model TEXT,
     version INTEGER,
     filter TEXT,
-    PRIMARY KEY (partition,keyspace,id)
+    PRIMARY KEY (id)
 );
 """, params: [])
         
@@ -128,7 +247,6 @@ CREATE TABLE IF NOT EXISTS Data (
                 } else {
                     // error in statement
                     debugPrint(String(cString: sqlite3_errmsg(db)))
-                    Switchblade.errors[blade.instance] = true
                     throw DatabaseError.Execute(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
                 }
                 
@@ -197,7 +315,7 @@ CREATE TABLE IF NOT EXISTS Data (
         let fromInfo = T.version
         let values: [Any?] = [fromInfo.objectName, fromInfo.version, ttl_now]
         
-        let sql = "SELECT value, partition, keyspace, id, ttl, filter FROM Data WHERE model = ? AND version = ? AND (ttl IS NULL or ttl >= ?)"
+        let sql = "SELECT value, id, ttl, filter FROM Data WHERE model = ? AND version = ? AND (ttl IS NULL or ttl >= ?)"
         
         var stmt: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
@@ -206,16 +324,14 @@ CREATE TABLE IF NOT EXISTS Data (
                 
                 let columns = sqlite3_column_count(stmt)
                 if columns > 0 {
-                    let partition = String.init(cString:sqlite3_column_text(stmt, Int32(1)))
-                    let keyspace = String.init(cString:sqlite3_column_text(stmt, Int32(2)))
-                    let id = String.init(cString:sqlite3_column_text(stmt, Int32(3)))
+                    let id = String.init(cString:sqlite3_column_text(stmt, Int32(1)))
                     var ttl: Int? = nil
-                    if sqlite3_column_type(stmt, Int32(4)) == SQLITE_INTEGER {
-                        ttl = Int(sqlite3_column_int64(stmt, Int32(4))) - ttl_now
+                    if sqlite3_column_type(stmt, Int32(2)) == SQLITE_INTEGER {
+                        ttl = Int(sqlite3_column_int64(stmt, Int32(2))) - ttl_now
                     }
                     var filter: String? = nil
-                    if sqlite3_column_type(stmt, Int32(5)) == SQLITE_TEXT {
-                        filter = String.init(cString:sqlite3_column_text(stmt, Int32(5)))
+                    if sqlite3_column_type(stmt, Int32(3)) == SQLITE_TEXT {
+                        filter = String.init(cString:sqlite3_column_text(stmt, Int32(3)))
                     }
                     switch sqlite3_column_type(stmt, Int32(0)) {
                     case SQLITE_BLOB:
@@ -231,9 +347,9 @@ CREATE TABLE IF NOT EXISTS Data (
                                         }
                                         filter = newFilter
                                     }
-                                    let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filter ?? "", newObject)
+                                    let _ = self.put(key: id, ttl: ttl ?? -1, filter: filter ?? "", newObject)
                                 } else {
-                                    let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
+                                    let _ = self.delete(key: id)
                                 }
                             }
                         } else {
@@ -254,9 +370,9 @@ CREATE TABLE IF NOT EXISTS Data (
                                                 }
                                                 filter = newFilter
                                             }
-                                            let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filter ?? "", newObject)
+                                            let _ = self.put(key: id, ttl: ttl ?? -1, filter: filter ?? "", newObject)
                                         } else {
-                                            let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
+                                            let _ = self.delete(key: id)
                                         }
                                     }
                                 } catch {
@@ -279,11 +395,11 @@ CREATE TABLE IF NOT EXISTS Data (
         
     }
     
-    public func query(sql: String, params:[Any?]) throws -> [(partition: String, keyspace: String, id: String, value: Data?)] {
+    public func query(sql: String, params:[Any?]) throws -> [(id: String, value: Data?)] {
         
-        if let results = try lock.throwingMutex ({ () -> [(partition: String, keyspace: String, id: String, value: Data?)] in
+        if let results = try lock.throwingMutex ({ () -> [(id: String, value: Data?)] in
             
-            var results: [(partition: String, keyspace: String, id: String, value: Data?)] = []
+            var results: [(id: String, value: Data?)] = []
             
             var values: [Any?] = []
             for o in params {
@@ -296,21 +412,19 @@ CREATE TABLE IF NOT EXISTS Data (
                 while sqlite3_step(stmt) == SQLITE_ROW {
                     
                     let columns = sqlite3_column_count(stmt)
-                    if columns > 3 {
-                        let partition = String.init(cString:sqlite3_column_text(stmt, Int32(0)))
-                        let keyspace = String.init(cString:sqlite3_column_text(stmt, Int32(1)))
-                        let id = String.init(cString:sqlite3_column_text(stmt, Int32(2)))
+                    if columns > 1 {
+                        let id = String.init(cString:sqlite3_column_text(stmt, Int32(0)))
                         var value: Data?
-                        switch sqlite3_column_type(stmt, Int32(3)) {
+                        switch sqlite3_column_type(stmt, Int32(1)) {
                         case SQLITE_BLOB:
-                            let d = Data(bytes: sqlite3_column_blob(stmt, Int32(3)), count: Int(sqlite3_column_bytes(stmt, Int32(3))))
+                            let d = Data(bytes: sqlite3_column_blob(stmt, Int32(1)), count: Int(sqlite3_column_bytes(stmt, Int32(1))))
                             value = d
                         default:
                             value = nil
                             break;
                         }
                         
-                        results.append((partition: partition, keyspace: keyspace, id: id, value: value))
+                        results.append((id: id, value: value))
                     }
                     
                 }
@@ -404,7 +518,7 @@ CREATE TABLE IF NOT EXISTS Data (
         }
     }
     
-    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, filter: String, _ object: T) -> Bool where T : Decodable, T : Encodable {
+    public func put<T>(key: String, ttl: Int, filter: String, _ object: T) -> Bool where T : Decodable, T : Encodable {
         
         if let jsonObject = try? JSONEncoder().encode(object) {
             let id = makeId(key)
@@ -416,10 +530,8 @@ CREATE TABLE IF NOT EXISTS Data (
                         model = info.objectName
                         version = info.version
                     }
-                    try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,timestamp,model,version,filter) VALUES (?,?,?,?,?,?,?,?,?);",
+                    try execute(sql: "INSERT OR REPLACE INTO Data (id,value,ttl,timestamp,model,version,filter) VALUES (?,?,?,?,?,?,?);",
                                 params: [
-                                    partition,
-                                    keyspace,
                                     id,
                                     jsonObject,ttl == -1 ? nil : Int(Date().timeIntervalSince1970) + ttl,
                                     Int(Date().timeIntervalSince1970),
@@ -441,10 +553,8 @@ CREATE TABLE IF NOT EXISTS Data (
                                 model = info.objectName
                                 version = info.version
                             }
-                            try execute(sql: "INSERT OR REPLACE INTO Data (partition,keyspace,id,value,ttl,timestamp,model,version,filter) VALUES (?,?,?,?,?,?,?,?,?);",
+                            try execute(sql: "INSERT OR REPLACE INTO Data (id,value,ttl,timestamp,model,version,filter) VALUES (?,?,?,?,?,?,?);",
                                         params: [
-                                            partition,
-                                            keyspace,
                                             id,
                                             encryptedData,
                                             ttl == -1 ? nil : Int(Date().timeIntervalSince1970) + ttl,
@@ -467,9 +577,9 @@ CREATE TABLE IF NOT EXISTS Data (
         return false
     }
     
-    public func delete(partition: String, key: String, keyspace: String) -> Bool {
+    public func delete(key: String) -> Bool {
         do {
-            try execute(sql: "DELETE FROM Data WHERE partition = ? AND keyspace = ? AND id = ?;", params: [partition, keyspace, key])
+            try execute(sql: "DELETE FROM Data WHERE id = ?;", params: [key])
             return true
         } catch {
             return false
@@ -477,15 +587,15 @@ CREATE TABLE IF NOT EXISTS Data (
     }
     
     @discardableResult
-    public func get<T>(partition: String, key: String, keyspace: String) -> T? where T : Decodable, T : Encodable {
+    public func get<T>(key: String) -> T? where T : Decodable, T : Encodable {
         do {
             if config.aes256encryptionKey == nil {
-                if let data = try query(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND id = ? AND (ttl IS NULL OR ttl >= ?)", params: [partition,keyspace,key,ttl_now]).first, let objectData = data.value {
+                if let data = try query(sql: "SELECT id, value FROM Data WHERE id = ? AND (ttl IS NULL OR ttl >= ?)", params: [key,ttl_now]).first, let objectData = data.value {
                     let object = try decoder.decode(T.self, from: objectData)
                     return object
                 }
             } else {
-                if let data = try query(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND id = ? AND (ttl IS NULL OR ttl >= ?)", params: [partition,keyspace,key,ttl_now]).first, let objectData = data.value, let encKey = config.aes256encryptionKey {
+                if let data = try query(sql: "SELECT id, value FROM Data WHERE id = ? AND (ttl IS NULL OR ttl >= ?)", params: [key,ttl_now]).first, let objectData = data.value, let encKey = config.aes256encryptionKey {
                     let key = encKey.sha256()
                     let iv = (encKey + Data(kSaltValue.bytes)).md5()
                     do {
@@ -503,7 +613,7 @@ CREATE TABLE IF NOT EXISTS Data (
             debugPrint("SQLiteProvider Error:  Failed to decode stored object into type: \(T.self)")
             debugPrint("Error:")
             debugPrint(error)
-            if let data = try? query(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND id = ? AND (ttl IS NULL OR ttl >= ?)", params: [partition,keyspace,key, ttl_now]).first, let objectData = data.value, let body = String(data: objectData, encoding: .utf8) {
+            if let data = try? query(sql: "SELECT id, value FROM Data WHERE id = ? AND (ttl IS NULL OR ttl >= ?)", params: [key, ttl_now]).first, let objectData = data.value, let body = String(data: objectData, encoding: .utf8) {
                 
                 debugPrint("Object data:")
                 debugPrint(body)
@@ -514,10 +624,10 @@ CREATE TABLE IF NOT EXISTS Data (
     }
 
     @discardableResult
-    public func query<T>(partition: String, keyspace: String, filter: [String : String]?, map: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
+    public func query<T>(filter: [String : String]?, map: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
         var results: [T] = []
         
-        for result: T in all(partition: partition, keyspace: keyspace, filter: filter) {
+        for result: T in all(filter: filter) {
             if map(result) {
                 results.append(result)
             }
@@ -530,7 +640,7 @@ CREATE TABLE IF NOT EXISTS Data (
         self.migrate(iterator: migration)
     }
     
-    public func iterate<T>(partition: String, keyspace: String, filter: [String : String]?, iterator: ((T) -> Void)) where T : Decodable, T : Encodable {
+    public func iterate<T>(filter: [String : String]?, iterator: ((T) -> Void)) where T : Decodable, T : Encodable {
         
         var f: String = ""
         if let filter = filter, filter.isEmpty == false {
@@ -540,11 +650,11 @@ CREATE TABLE IF NOT EXISTS Data (
             }
         }
         
-        iterate(sql: "SELECT value FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) \(f) ORDER BY timestamp ASC;", params: [partition, keyspace, ttl_now], iterator: iterator)
+        iterate(sql: "SELECT value FROM Data WHERE (ttl IS NULL OR ttl >= ?) \(f) ORDER BY timestamp ASC;", params: [ttl_now], iterator: iterator)
     }
     
     @discardableResult
-    public func all<T>(partition: String, keyspace: String, filter: [String : String]?) -> [T] where T : Decodable, T : Encodable {
+    public func all<T>(filter: [String : String]?) -> [T] where T : Decodable, T : Encodable {
         do {
             
             var f: String = ""
@@ -555,7 +665,7 @@ CREATE TABLE IF NOT EXISTS Data (
                 }
             }
             
-            let data = try query(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) \(f) ORDER BY timestamp ASC;", params: [partition, keyspace, ttl_now])
+            let data = try query(sql: "SELECT id, value FROM Data WHERE (ttl IS NULL OR ttl >= ?) \(f) ORDER BY timestamp ASC;", params: [ttl_now])
             var aggregation: [Data] = []
             for d in data.map({ $0.value }) {
                 if config.aes256encryptionKey == nil {

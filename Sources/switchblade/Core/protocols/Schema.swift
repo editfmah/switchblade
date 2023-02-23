@@ -8,7 +8,7 @@
 import Foundation
 
 public protocol SwitchbladeVersioned {
-    func migrate<FromType, ToType>(from: FromType.Type, to: ToType.Type, migration: ((FromType) -> ToType?)) where FromType : SchemaVersioned, ToType : SchemaVersioned
+    func migrate<FromType, ToType>(from: FromType.Type, to: ToType.Type, migration: @escaping ((FromType) -> ToType?)) where FromType : SchemaVersioned, ToType : SchemaVersioned
 }
 
 public protocol SchemaVersioned where Self: Codable {
