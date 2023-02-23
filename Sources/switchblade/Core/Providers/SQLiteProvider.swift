@@ -290,11 +290,11 @@ CREATE TABLE IF NOT EXISTS Data (
         
     }
     
-    public func query(sql: String, params:[Any?]) throws -> [(partition: String, keyspace: String, id: String, value: Data?)] {
+    public func query(sql: String, params:[Any?]) throws -> [(partition: Data, keyspace: Data, id: Data, value: Data?)] {
         
-        if let results = try lock.throwingMutex ({ () -> [(partition: String, keyspace: String, id: String, value: Data?)] in
+        if let results = try lock.throwingMutex ({ () -> [(partition: Data, keyspace: Data, id: Data, value: Data?)] in
             
-            var results: [(partition: String, keyspace: String, id: String, value: Data?)] = []
+            var results: [(partition: Data, keyspace: Data, id: Data, value: Data?)] = []
             
             var values: [Any?] = []
             for o in params {
@@ -308,9 +308,9 @@ CREATE TABLE IF NOT EXISTS Data (
                     
                     let columns = sqlite3_column_count(stmt)
                     if columns > 3 {
-                        let partition = String.init(cString:sqlite3_column_text(stmt, Int32(0)))
-                        let keyspace = String.init(cString:sqlite3_column_text(stmt, Int32(1)))
-                        let id = String.init(cString:sqlite3_column_text(stmt, Int32(2)))
+                        let partition = Data(bytes: sqlite3_column_blob(stmt, Int32(0)), count: Int(sqlite3_column_bytes(stmt, Int32(0))))
+                        let keyspace = Data(bytes: sqlite3_column_blob(stmt, Int32(1)), count: Int(sqlite3_column_bytes(stmt, Int32(1))))
+                        let id = Data(bytes: sqlite3_column_blob(stmt, Int32(2)), count: Int(sqlite3_column_bytes(stmt, Int32(2))))
                         var value: Data?
                         switch sqlite3_column_type(stmt, Int32(3)) {
                         case SQLITE_BLOB:
