@@ -33,7 +33,7 @@ public class UserDefaultsProvider: DataProvider {
         defaults.synchronize()
     }
     
-    fileprivate func makeId(_ key: String) -> String {
+    fileprivate func makeId(_ key: Data) -> String {
         return "Switchblade_\(key.sha224())"
     }
     
@@ -45,7 +45,7 @@ public class UserDefaultsProvider: DataProvider {
         
     }
     
-    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, filter: String, _ object: T) -> Bool where T : Decodable, T : Encodable {
+    public func put<T>(partition: Data, key: Data, keyspace: Data, ttl: Int, filter: String, _ object: T) -> Bool where T : Decodable, T : Encodable {
         if let jsonObject = try? JSONEncoder().encode(object) {
             let id = makeId(key)
             if config.aes256encryptionKey == nil {
@@ -68,13 +68,13 @@ public class UserDefaultsProvider: DataProvider {
         return true
     }
     
-    public func delete(partition: String, key: String, keyspace: String) -> Bool {
+    public func delete(partition: Data, key: Data, keyspace: Data) -> Bool {
         let id = makeId(key)
         defaults.removeObject(forKey: id)
         return true
     }
     
-    public func get<T>(partition: String, key: String, keyspace: String) -> T? where T : Decodable, T : Encodable {
+    public func get<T>(partition: Data, key: Data, keyspace: Data) -> T? where T : Decodable, T : Encodable {
         let id = makeId(key)
         if config.aes256encryptionKey == nil {
             if let data = defaults.data(forKey: id), let object = try? decoder.decode(T.self, from: data) {
@@ -99,7 +99,7 @@ public class UserDefaultsProvider: DataProvider {
     }
 
     
-public func query<T>(partition: String, keyspace: String, filter: [String : String]?, map: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
+public func query<T>(partition: Data, keyspace: Data, filter: [String : String]?, map: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
         var results: [T] = []
         for o: T in all(partition: partition, keyspace: keyspace, filter: filter) {
             if map(o) {
@@ -109,7 +109,7 @@ public func query<T>(partition: String, keyspace: String, filter: [String : Stri
         return results
     }
     
-public func all<T>(partition: String, keyspace: String, filter: [String : String]?) -> [T] where T : Decodable, T : Encodable {
+public func all<T>(partition: Data, keyspace: Data, filter: [String : String]?) -> [T] where T : Decodable, T : Encodable {
         
         var results: [T] = []
         for (id, _) in defaults.dictionaryRepresentation() {
@@ -139,7 +139,7 @@ public func all<T>(partition: String, keyspace: String, filter: [String : String
         return results
     }
     
-    public func iterate<T>(partition: String, keyspace: String, filter: [String : String]?, iterator: ((T) -> Void)) where T : Decodable, T : Encodable {
+    public func iterate<T>(partition: Data, keyspace: Data, filter: [String : String]?, iterator: ((T) -> Void)) where T : Decodable, T : Encodable {
         
         for (id, _) in defaults.dictionaryRepresentation() {
             if config.aes256encryptionKey == nil {

@@ -19,7 +19,7 @@ extension Switchblade : SwitchbadeRetriever {
         var k = key?.key()
         
         if let composite = compositeKeys {
-            k = makeCompositeKey(composite)
+            k = makeCompositeKey(composite).md5Data
         }
         
         if k == nil {
@@ -27,7 +27,7 @@ extension Switchblade : SwitchbadeRetriever {
             return nil
         }
         
-        return provider.get(partition: p, key: k!, keyspace: ks)
+        return provider.get(partition: p.md5Data, key: k!, keyspace: ks.md5Data)
         
     }
     
@@ -36,7 +36,7 @@ extension Switchblade : SwitchbadeRetriever {
         let p = partition ?? default_partition
         let ks = keyspace ?? default_keyspace
         
-        return provider.all(partition: p, keyspace: ks, filter: filter)
+        return provider.all(partition: p.md5Data, keyspace: ks.md5Data, filter: filter)
         
     }
     
@@ -45,7 +45,7 @@ extension Switchblade : SwitchbadeRetriever {
         let p = partition ?? default_partition
         let ks = keyspace ?? default_keyspace
         
-        return provider.query(partition: p, keyspace: ks, filter: filter, map: `where`)
+        return provider.query(partition: p.md5Data, keyspace: ks.md5Data, filter: filter, map: `where`)
         
     }
     
@@ -54,7 +54,7 @@ extension Switchblade : SwitchbadeRetriever {
         let p = partition ?? default_partition
         let ks = keyspace ?? default_keyspace
         
-        return provider.iterate(partition: p, keyspace: ks, filter: filter, iterator: closure)
+        return provider.iterate(partition: p.md5Data, keyspace: ks.md5Data, filter: filter, iterator: closure)
         
     }
     
