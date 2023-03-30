@@ -14,7 +14,7 @@ let package = Package(
             targets: ["Switchblade"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git",   .upToNextMinor(from: "1.3.8")),
+        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", .branch("main")),
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
