@@ -57,17 +57,14 @@ CREATE TABLE IF NOT EXISTS Data (
 );
 """, params: [])
         
-        _ = try self.execute(sql: "ALTER TABLE Data ADD COLUMN model TEXT;", params: [], silent: true)
-        _ = try self.execute(sql: "ALTER TABLE Data ADD COLUMN version INTEGER;", params: [], silent: true)
-        _ = try self.execute(sql: "ALTER TABLE Data ADD COLUMN filter TEXT;", params: [], silent: true)
-        
         // indexes
         _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_ttl ON Data (ttl);", params: [])
         _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_schema ON Data (model,version);", params: [])
         
         DispatchQueue.global(qos: .default).asyncAfter(deadline: .now() + 60, execute: {
             while self.db != nil {
-                try? self.execute(sql: "DELETE FROM Data WHERE ttl IS NOT NULL AND ttl < ?;", params: [ttl_now])
+                // only clean up data that is over two hours old. This is to allow offline nodes to replay changes when they come back online
+                try? self.execute(sql: "DELETE FROM Data WHERE ttl IS NOT NULL AND ttl < ?;", params: [ttl_now - (7200)])
                 Thread.sleep(forTimeInterval: 60)
             }
         })
@@ -101,9 +98,6 @@ CREATE TABLE IF NOT EXISTS Data (
                         
                     }
                     
-                } else {
-                    // error in statement
-                    debugPrint(String(cString: sqlite3_errmsg(db)))
                 }
                 
                 sqlite3_finalize(stmt)
@@ -469,7 +463,13 @@ CREATE TABLE IF NOT EXISTS Data (
     
     public func delete(partition: String, key: String, keyspace: String) -> Bool {
         do {
-            try execute(sql: "DELETE FROM Data WHERE partition = ? AND keyspace = ? AND id = ?;", params: [partition, keyspace, key])
+            try execute(sql: "UPDATE Data SET ttl = ?, timestamp = ? WHERE partition = ? AND keyspace = ? AND id = ?;",
+                        params: [
+                            (ttl_now - 5),
+                            Int(Date().timeIntervalSince1970) ,
+                            partition,
+                            keyspace,
+                            key])
             return true
         } catch {
             return false
@@ -645,4 +645,20 @@ CREATE TABLE IF NOT EXISTS Data (
         
     }
     
+}
+
+fileprivate extension UUID{
+    public func asData() -> Data {
+        func asUInt8Array() -> [UInt8] {
+            let (u1,u2,u3,u4,u5,u6,u7,u8,u9,u10,u11,u12,u13,u14,u15,u16) = self.uuid
+            return [u1,u2,u3,u4,u5,u6,u7,u8,u9,u10,u11,u12,u13,u14,u15,u16]
+        }
+        return Data(asUInt8Array())
+    }
+}
+
+fileprivate extension Data {
+    var bytes : [UInt8]{
+        return [UInt8](self)
+    }
 }
