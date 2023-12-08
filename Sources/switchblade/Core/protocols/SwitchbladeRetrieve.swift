@@ -19,5 +19,10 @@ public protocol SwitchbadeRetriever {
     @discardableResult func all<T:Codable>(partition: String?, keyspace: String?, filter: [String:String]?) -> [T]
     @discardableResult func query<T:Codable>(partition: String?, keyspace: String?, filter: [String:String]?, _ where: ((T) -> Bool)) -> [T]
     func iterate<T: Codable>(partition: String?, keyspace: String?, filter: [String:String]?, _ closure: @escaping ((_ object: T) -> Void)) 
+    /* NOTE: special instructions to pop an item from a table.
+            Returns the first match only whilst deleting the original item from the table.
+            This operation is ATOMIC so can be deployed in a busy environment and safely used
+     */
+    @discardableResult func pop<T:Codable>(partition: String, keyspace: String, filter: [String:String]?) -> T?
     
 }

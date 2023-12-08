@@ -544,6 +544,67 @@ CREATE TABLE IF NOT EXISTS Data (
     }
     
     @discardableResult
+    public func pop<T>(partition: String, keyspace: String, filter: [String : String]?) -> T? where T : Decodable, T : Encodable {
+        do {
+            
+            var f: String = ""
+            if let filter = filter, filter.isEmpty == false {
+                for kvp in filter {
+                    let value = "\(kvp.key)=\(kvp.value)".md5()
+                    f += " AND filter LIKE '%\(value)%' "
+                }
+            }
+            
+            let data = try query(sql: "SELECT partition, keyspace, id, value FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) \(f) ORDER BY timestamp ASC LIMIT 1;", params: [partition, keyspace, ttl_now])
+            if let resultData = data, let first = resultData.first {
+                try? execute(sql: "DELETE FROM Data WHERE partition = ? AND keyspace = ? AND id = ?", params: [partition, keyspace, first.id])
+            }
+            var aggregation: [Data] = []
+            for d in [data?.value] {
+                if config.aes256encryptionKey == nil {
+                    if let objectData = d {
+                        aggregation.append(objectData)
+                    }
+                } else {
+                    // this data is to be stored encrypted
+                    if let encKey = config.aes256encryptionKey {
+                        let key = encKey.sha256()
+                        let iv = (encKey + Data(kSaltValue.bytes)).md5()
+                        do {
+                            let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
+                            if let encryptedData = d {
+                                let objectData = try aes.decrypt(encryptedData.bytes)
+                                aggregation.append(Data(objectData))
+                            }
+                        } catch {
+                            print("encryption error: \(error)")
+                        }
+                    }
+                }
+            }
+            let opener = "[".data(using: .utf8)!
+            let closer = "]".data(using: .utf8)!
+            let separater = ",".data(using: .utf8)!
+            var fullData = opener
+            fullData.append(contentsOf: aggregation.joined(separator: separater))
+            fullData.append(closer)
+            if let results = try? JSONDecoder().decode([T].self, from: fullData) {
+                return results
+            } else {
+                var results: [T] = []
+                for v in aggregation {
+                    if let object = try? JSONDecoder().decode(T.self, from: v) {
+                        results.append(object)
+                    }
+                }
+                return results
+            }
+        } catch  {
+            return []
+        }
+    }
+    
+    @discardableResult
     public func all<T>(partition: String, keyspace: String, filter: [String : String]?) -> [T] where T : Decodable, T : Encodable {
         do {
             
