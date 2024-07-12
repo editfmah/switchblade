@@ -44,7 +44,7 @@ public class UserDefaultsProvider: DataProvider {
         
     }
     
-    public func ids(partition: String, keyspace: String) -> [String] {
+    public func ids(partition: String, keyspace: String, filter: [String : String]?) -> [String] {
         var results: [String] = []
         for (id, _) in defaults.dictionaryRepresentation() {
             results.append(id)

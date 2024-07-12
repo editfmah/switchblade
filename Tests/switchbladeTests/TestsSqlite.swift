@@ -211,6 +211,36 @@ extension switchbladeTests {
         XCTFail("did not retireve the correct IDs")
     }
     
+    func testPersistMultipleObjectsAndIdsWithFilter() {
+        
+        let db = initSQLiteDatabase()
+        
+        let p1 = PersonFilterable()
+        let p2 = PersonFilterable()
+        let p3 = PersonFilterable()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 41
+        if db.put(p1) {
+            p2.Name = "Neil Bostrom"
+            p2.Age = 38
+            if db.put(p2) {
+                p3.Name = "George Smith"
+                p3.Age = 28
+                if db.put(p3) {
+                    let ps: [Person] = db.all(keyspace: p1.keyspace, filter: ["age" : "41"])
+                    let ids: [String] = db.ids(keyspace: p1.keyspace, filter: ["age" : "41"]).map({ $0.uppercased() })
+                    if ids.count == 1 {
+                        if ids.contains(p1.PersonId.uuidString.uppercased()) {
+                            return
+                        }
+                    }
+                }
+            }
+        }
+        XCTFail("did not retireve the correct IDs")
+    }
+    
     
     func testPersistMultipleObjectsAndQueryMultipleParams() {
         
