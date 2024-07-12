@@ -13,7 +13,6 @@ import CryptoSwift
 
 public class UserDefaultsProvider: DataProvider {
     
-        
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
     fileprivate var lock = Mutex()
@@ -43,6 +42,14 @@ public class UserDefaultsProvider: DataProvider {
 
     public func migrate<FromType, ToType>(from: FromType.Type, to: ToType.Type, migration: ((FromType) -> ToType?)) where FromType : SchemaVersioned, ToType : SchemaVersioned {
         
+    }
+    
+    public func ids(partition: String, keyspace: String) -> [String] {
+        var results: [String] = []
+        for (id, _) in defaults.dictionaryRepresentation() {
+            results.append(id)
+        }
+        return results
     }
     
     public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, filter: String, _ object: T) -> Bool where T : Decodable, T : Encodable {

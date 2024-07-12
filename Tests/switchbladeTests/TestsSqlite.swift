@@ -182,6 +182,36 @@ extension switchbladeTests {
         XCTFail("failed to write one of the records")
     }
     
+    func testPersistMultipleObjectsAndIds() {
+        
+        let db = initSQLiteDatabase()
+        
+        let p1 = Person()
+        let p2 = Person()
+        let p3 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 41
+        if db.put(p1) {
+            p2.Name = "Neil Bostrom"
+            p2.Age = 38
+            if db.put(p2) {
+                p3.Name = "George Smith"
+                p3.Age = 28
+                if db.put(p3) {
+                    let ids: [String] = db.ids(keyspace: p1.keyspace).map({ $0.uppercased() })
+                    if ids.count == 3 {
+                        if ids.contains(p1.PersonId.uuidString.uppercased()) && ids.contains(p2.PersonId.uuidString.uppercased()) && ids.contains(p3.PersonId.uuidString.uppercased()) {
+                            return
+                        }
+                    }
+                }
+            }
+        }
+        XCTFail("did not retireve the correct IDs")
+    }
+    
+    
     func testPersistMultipleObjectsAndQueryMultipleParams() {
         
         let db = initSQLiteDatabase()

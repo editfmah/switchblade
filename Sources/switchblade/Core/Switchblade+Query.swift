@@ -58,4 +58,13 @@ extension Switchblade : SwitchbadeRetriever {
         
     }
     
+    public func ids(partition: String? = nil, keyspace: String? = nil) -> [String] {
+        
+        let p = partition ?? default_partition
+        let ks = keyspace ?? default_keyspace
+        
+        return provider.ids(partition: p, keyspace: ks)
+        
+    }
+    
 }

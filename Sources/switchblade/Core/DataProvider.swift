@@ -22,6 +22,7 @@ public protocol DataProvider {
     
     func iterate<T: Codable>(partition: String, keyspace: String, filter: [String:String]?, iterator: ((T) -> Void))
     func migrate<FromType: SchemaVersioned, ToType: SchemaVersioned>(from: FromType.Type, to: ToType.Type, migration: @escaping ((FromType) -> ToType?))
+    @discardableResult func ids(partition: String, keyspace: String) -> [String]
     
     var config: SwitchbladeConfig! { get set }
     var blade: Switchblade! { get set }

@@ -186,6 +186,39 @@ CREATE TABLE IF NOT EXISTS Data (
         
     }
     
+    public func ids(partition: String, keyspace: String) -> [String] {
+        var results: [String] = []
+        
+        lock.mutex {
+            var stmt: OpaquePointer?
+            if sqlite3_prepare_v2(db, "SELECT id FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) ORDER BY timestamp ASC;", Int32("SELECT id FROM Data WHERE partition = ? AND keyspace = ? AND (ttl IS NULL OR ttl >= ?) ORDER BY timestamp ASC;".utf8.count), &stmt, nil) == SQLITE_OK {
+                bind(stmt: stmt, params: [partition, keyspace, ttl_now]);
+                while sqlite3_step(stmt) == SQLITE_ROW {
+                    
+                    let columns = sqlite3_column_count(stmt)
+                    if columns > 0 {
+                        let i = 0
+                        switch sqlite3_column_type(stmt, Int32(i)) {
+                        case SQLITE_TEXT:
+                            let value = String.init(cString:sqlite3_column_text(stmt, Int32(i)))
+                            results.append(value)
+                        default:
+                            break;
+                        }
+                    }
+                    
+                }
+            } else {
+                print(String(cString: sqlite3_errmsg(db)))
+                Switchblade.errors[blade.instance] = true
+            }
+            
+            sqlite3_finalize(stmt)
+        }
+        
+        return results
+    }
+    
     fileprivate func migrate<T:SchemaVersioned>(iterator: ( (T) -> SchemaVersioned?)) {
         
         let fromInfo = T.version
