@@ -13,6 +13,6 @@ fileprivate var default_ttl = -1
 
 public protocol SwitchbadePutter {
     
-    @discardableResult func put<T:Codable>(partition: String?, keyspace: String?, key: PrimaryKeyType?, compositeKeys: [CompositeComponent]?, ttl: Int?, filter: [String:String]?, _ object: T) -> Bool
+    @discardableResult func put<T:Codable>(partition: String?, keyspace: String?, key: PrimaryKeyType?, compositeKeys: [CompositeComponent]?, ttl: Int?, filter: [Filters]?, _ object: T) -> Bool
     
 }

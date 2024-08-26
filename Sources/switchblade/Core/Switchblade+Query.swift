@@ -31,39 +31,39 @@ extension Switchblade : SwitchbadeRetriever {
         
     }
     
-    public func all<T>(partition: String? = nil, keyspace: String? = nil, filter: [String : String]? = nil) -> [T] where T : Decodable, T : Encodable {
+    public func all<T>(partition: String? = nil, keyspace: String? = nil, filter: [Filters]? = nil) -> [T] where T : Decodable, T : Encodable {
         
         let p = partition ?? default_partition
         let ks = keyspace ?? default_keyspace
         
-        return provider.all(partition: p, keyspace: ks, filter: filter)
+        return provider.all(partition: p, keyspace: ks, filter: filter?.dictionary)
         
     }
     
-    public func query<T>(partition: String? = nil, keyspace: String? = nil, filter: [String : String]? = nil, _ where: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
+    public func query<T>(partition: String? = nil, keyspace: String? = nil, filter: [Filters]? = nil, _ where: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
         
         let p = partition ?? default_partition
         let ks = keyspace ?? default_keyspace
         
-        return provider.query(partition: p, keyspace: ks, filter: filter, map: `where`)
+        return provider.query(partition: p, keyspace: ks, filter: filter?.dictionary, map: `where`)
         
     }
     
-    public func iterate<T>(partition: String? = nil, keyspace: String? = nil, filter: [String : String]? = nil, _ closure: @escaping ((T) -> Void)) where T : Decodable, T : Encodable {
+    public func iterate<T>(partition: String? = nil, keyspace: String? = nil, filter: [Filters]? = nil, _ closure: @escaping ((T) -> Void)) where T : Decodable, T : Encodable {
         
         let p = partition ?? default_partition
         let ks = keyspace ?? default_keyspace
         
-        return provider.iterate(partition: p, keyspace: ks, filter: filter, iterator: closure)
+        return provider.iterate(partition: p, keyspace: ks, filter: filter?.dictionary, iterator: closure)
         
     }
     
-    public func ids(partition: String? = nil, keyspace: String? = nil, filter: [String : String]? = nil) -> [String] {
+    public func ids(partition: String? = nil, keyspace: String? = nil, filter: [Filters]? = nil) -> [String] {
         
         let p = partition ?? default_partition
         let ks = keyspace ?? default_keyspace
         
-        return provider.ids(partition: p, keyspace: ks, filter: filter)
+        return provider.ids(partition: p, keyspace: ks, filter: filter?.dictionary)
         
     }
     

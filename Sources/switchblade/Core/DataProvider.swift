@@ -14,7 +14,7 @@ public protocol DataProvider {
 
     @discardableResult func transact(_ mode: transaction) -> Bool
     
-    @discardableResult func put<T: Codable>(partition: String, key: String, keyspace: String, ttl: Int, filter: String, _ object: T) -> Bool
+    @discardableResult func put<T: Codable>(partition: String, key: String, keyspace: String, ttl: Int, filter: [String:String]?, _ object: T) -> Bool
     @discardableResult func delete(partition: String, key: String, keyspace: String) -> Bool
     @discardableResult func get<T:Codable>(partition: String, key: String, keyspace: String) -> T?
     @discardableResult func query<T: Codable>(partition: String, keyspace: String, filter: [String:String]?, map: ((T) -> Bool)) -> [T]

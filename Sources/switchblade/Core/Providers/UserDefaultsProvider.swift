@@ -52,7 +52,7 @@ public class UserDefaultsProvider: DataProvider {
         return results
     }
     
-    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, filter: String, _ object: T) -> Bool where T : Decodable, T : Encodable {
+    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, filter: [String:String]?, _ object: T) -> Bool where T : Decodable, T : Encodable {
         if let jsonObject = try? JSONEncoder().encode(object) {
             let id = makeId(key)
             if config.aes256encryptionKey == nil {

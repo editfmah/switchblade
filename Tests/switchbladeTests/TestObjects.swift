@@ -28,9 +28,19 @@ public class Person : Codable, Identifiable, KeyspaceIdentifiable {
 
 public class PersonFilterable : Codable, Filterable, Identifiable, KeyspaceIdentifiable {
     
-    public var filters: [String : String] {
+    public var filterz: [String : String] {
         get {
             return ["type" : "person", "age" : "\(self.Age ?? 0)", "name" : self.Name ?? ""]
+        }
+    }
+    
+    public var filters: [Filters] {
+        get {
+            return [
+                .string(name: "type", value: "person"),
+                .int(name: "age", value: self.Age ?? 0),
+                .string(name: "name", value: self.Name ?? "")
+            ]
         }
     }
     

@@ -16,8 +16,8 @@ public protocol SwitchbadeRetriever {
     
     // typed by expected return/assignment value
     @discardableResult func get<T:Codable>(partition: String?, key: PrimaryKeyType?, keyspace: String?, compositeKeys: [CompositeComponent]?) -> T?
-    @discardableResult func all<T:Codable>(partition: String?, keyspace: String?, filter: [String:String]?) -> [T]
-    @discardableResult func query<T:Codable>(partition: String?, keyspace: String?, filter: [String:String]?, _ where: ((T) -> Bool)) -> [T]
-    func iterate<T: Codable>(partition: String?, keyspace: String?, filter: [String:String]?, _ closure: @escaping ((_ object: T) -> Void)) 
+    @discardableResult func all<T:Codable>(partition: String?, keyspace: String?, filter: [Filters]?) -> [T]
+    @discardableResult func query<T:Codable>(partition: String?, keyspace: String?, filter: [Filters]?, _ where: ((T) -> Bool)) -> [T]
+    func iterate<T: Codable>(partition: String?, keyspace: String?, filter: [Filters]?, _ closure: @escaping ((_ object: T) -> Void)) 
     
 }

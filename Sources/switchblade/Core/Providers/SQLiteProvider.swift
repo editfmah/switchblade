@@ -255,25 +255,18 @@ CREATE TABLE IF NOT EXISTS Data (
                     if sqlite3_column_type(stmt, Int32(4)) == SQLITE_INTEGER {
                         ttl = Int(sqlite3_column_int64(stmt, Int32(4))) - ttl_now
                     }
-                    var filter: String? = nil
-                    if sqlite3_column_type(stmt, Int32(5)) == SQLITE_TEXT {
-                        filter = String.init(cString:sqlite3_column_text(stmt, Int32(5)))
-                    }
+                
                     switch sqlite3_column_type(stmt, Int32(0)) {
                     case SQLITE_BLOB:
                         let d = Data(bytes: sqlite3_column_blob(stmt, Int32(0)), count: Int(sqlite3_column_bytes(stmt, Int32(0))))
                         if config.aes256encryptionKey == nil {
                             if let object = try? decoder.decode(T.self, from: d) {
                                 if let newObject = iterator(object) {
+                                    var filters: [String:String] = [:]
                                     if let filterable = newObject as? Filterable {
-                                        var newFilter = ""
-                                        for kvp in filterable.filters {
-                                            let value = "\(kvp.key)=\(kvp.value)".md5()
-                                            newFilter += " AND filter LIKE '%\(value)%' "
-                                        }
-                                        filter = newFilter
+                                        filters = filterable.filters.dictionary
                                     }
-                                    let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filter ?? "", newObject)
+                                    let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filters, newObject)
                                 } else {
                                     let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
                                 }
@@ -288,15 +281,11 @@ CREATE TABLE IF NOT EXISTS Data (
                                     let objectData = try aes.decrypt(d.bytes)
                                     if let object = try? decoder.decode(T.self, from: Data(bytes: objectData, count: objectData.count)) {
                                         if let newObject = iterator(object) {
+                                            var filters: [String:String] = [:]
                                             if let filterable = newObject as? Filterable {
-                                                var newFilter = ""
-                                                for kvp in filterable.filters {
-                                                    let value = "\(kvp.key)=\(kvp.value)".md5()
-                                                    newFilter += " AND filter LIKE '%\(value)%' "
-                                                }
-                                                filter = newFilter
+                                                filters = filterable.filters.dictionary
                                             }
-                                            let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filter ?? "", newObject)
+                                            let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filters, newObject)
                                         } else {
                                             let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
                                         }
@@ -446,7 +435,7 @@ CREATE TABLE IF NOT EXISTS Data (
         }
     }
     
-    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, filter: String, _ object: T) -> Bool where T : Decodable, T : Encodable {
+    public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, filter: [String:String]?, _ object: T) -> Bool where T : Decodable, T : Encodable {
         
         if let jsonObject = try? JSONEncoder().encode(object) {
             let id = makeId(key)
@@ -467,7 +456,7 @@ CREATE TABLE IF NOT EXISTS Data (
                                     Int(Date().timeIntervalSince1970),
                                     model,
                                     version,
-                                    filter,
+                                    filter?.compactMap({ "\($0.key)=\($0.value)".md5() }).joined(separator: ",") ?? "",
                                 ])
                 } else {
                     // this data is to be stored encrypted
@@ -493,7 +482,7 @@ CREATE TABLE IF NOT EXISTS Data (
                                             Int(Date().timeIntervalSince1970),
                                             model,
                                             version,
-                                            filter,
+                                            filter?.compactMap({ "\($0.key)=\($0.value)".md5() }).joined(separator: ",") ?? "",
                                         ])
                         } catch {
                             print("encryption error: \(error)")
@@ -695,8 +684,8 @@ CREATE TABLE IF NOT EXISTS Data (
     
 }
 
-fileprivate extension UUID{
-    public func asData() -> Data {
+fileprivate extension UUID {
+    func asData() -> Data {
         func asUInt8Array() -> [UInt8] {
             let (u1,u2,u3,u4,u5,u6,u7,u8,u9,u10,u11,u12,u13,u14,u15,u16) = self.uuid
             return [u1,u2,u3,u4,u5,u6,u7,u8,u9,u10,u11,u12,u13,u14,u15,u16]
