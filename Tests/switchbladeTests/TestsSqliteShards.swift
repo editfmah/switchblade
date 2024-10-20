@@ -1,20 +1,20 @@
 //
-//  Tests.swift
-//  SwitchbladeTests
+//  TestsSqliteShards.swift
+//  Switchblade
 //
-//  Created by Adrian Herridge on 02/08/2019.
+//  Created by Adrian on 20/10/2024.
 //
 
 import Foundation
 import XCTest
 @testable import Switchblade
 
-fileprivate func initSQLiteDatabase(_ config: SwitchbladeConfig? = nil) -> Switchblade {
+fileprivate func initSQLiteShardDatabase(_ config: SwitchbladeConfig? = nil) -> Switchblade {
     
-    let path = FileManager.default.currentDirectoryPath
-    let id = UUID().uuidString
-    print("Database Opened: \(path)/\(id).db")
-    let db = Switchblade(provider: SQLiteProvider(path: "\(path)/\(id).db"), configuration: config) { (success, provider, error) in
+    let path = FileManager.default.currentDirectoryPath + "/" + UUID().uuidString
+    print("Database(s) opened in: \(path)/")
+    try? FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
+    let db = Switchblade(provider: SQLiteShardProvider(path: "\(path)/"), configuration: config) { (success, provider, error) in
         XCTAssert(error == nil, "failed to initialiase")
     }
     return db
@@ -23,9 +23,9 @@ fileprivate func initSQLiteDatabase(_ config: SwitchbladeConfig? = nil) -> Switc
 
 extension switchbladeTests {
     
-    func testPersistObject() {
+    func testShardPersistObject() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -49,9 +49,9 @@ extension switchbladeTests {
         
     }
     
-    func testPersistQueryObject() {
+    func testShardPersistQueryObject() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         
@@ -70,9 +70,9 @@ extension switchbladeTests {
         
     }
     
-    func testPersistSingleObjectAndCheckAll() {
+    func testShardPersistSingleObjectAndCheckAll() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         
@@ -90,9 +90,9 @@ extension switchbladeTests {
     }
     
     
-    func testPersistMultipleObjectsAndCheckAll() {
+    func testShardPersistMultipleObjectsAndCheckAll() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -119,9 +119,9 @@ extension switchbladeTests {
         XCTFail("failed to write one of the records")
     }
     
-    func testPersistMultipleObjectsAndFilterAll() {
+    func testShardPersistMultipleObjectsAndFilterAll() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -147,9 +147,44 @@ extension switchbladeTests {
         XCTFail("failed to write one of the records")
     }
     
-    func testPersistMultipleObjectsAndQuery() {
+    func testShardPersistMultipleObjectsMultiplePartitionsAndQuery() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
+        
+        let p1 = Person()
+        let p2 = Person()
+        let p3 = Person()
+        
+        p1.Name = "Adrian Herridge"
+        p1.Age = 41
+        if db.put(partition: "partition1" , p1) {
+            p2.Name = "Neil Bostrom"
+            p2.Age = 38
+            if db.put(partition: "partition2", p2) {
+                p3.Name = "George Smith"
+                p3.Age = 28
+                if db.put(partition: "partition3", p3) {
+                    let results: [Person] = db.query(partition: "partition1", keyspace: p1.keyspace) { person in
+                        return person.Age == 41
+                    }
+                    if results.count == 1 {
+                        if let result = results.first, result.Name == "Adrian Herridge" {
+                            return
+                        } else {
+                            XCTFail("failed to read back the correct record")
+                        }
+                    } else {
+                        XCTFail("failed to read back the correct record")
+                    }
+                }
+            }
+        }
+        XCTFail("failed to write one of the records")
+    }
+    
+    func testShardPersistMultipleObjectsAndQuery() {
+        
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -182,9 +217,9 @@ extension switchbladeTests {
         XCTFail("failed to write one of the records")
     }
     
-    func testPersistMultipleObjectsAndIds() {
+    func testShardPersistMultipleObjectsAndIds() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -211,9 +246,9 @@ extension switchbladeTests {
         XCTFail("did not retireve the correct IDs")
     }
     
-    func testPersistMultipleObjectsAndIdsWithFilter() {
+    func testShardPersistMultipleObjectsAndIdsWithFilter() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = PersonFilterable()
         let p2 = PersonFilterable()
@@ -242,9 +277,9 @@ extension switchbladeTests {
     }
     
     
-    func testPersistMultipleObjectsAndQueryMultipleParams() {
+    func testShardPersistMultipleObjectsAndQueryMultipleParams() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -277,11 +312,11 @@ extension switchbladeTests {
         XCTFail("failed to write one of the records")
     }
     
-    func testPersistAndQueryObjectEncrypted() {
+    func testShardPersistAndQueryObjectEncrypted() {
         
         let config = SwitchbladeConfig()
         config.aes256encryptionKey = Data("big_sprouts".utf8)
-        let db = initSQLiteDatabase(config)
+        let db = initSQLiteShardDatabase(config)
         
         let p1 = Person()
         
@@ -298,11 +333,11 @@ extension switchbladeTests {
         }
     }
     
-    func testPersistAndQueryObjectEncryptedWrongSeed() {
+    func testShardPersistAndQueryObjectEncryptedWrongSeed() {
         
         let config = SwitchbladeConfig()
         config.aes256encryptionKey = Data("big_sprouts".utf8)
-        let db = initSQLiteDatabase(config)
+        let db = initSQLiteShardDatabase(config)
         
         let p1 = Person()
         
@@ -320,12 +355,12 @@ extension switchbladeTests {
         }
     }
     
-    func testPersistAndQueryObjectPropertiesEncrypted() {
+    func testShardPersistAndQueryObjectPropertiesEncrypted() {
         
         let config = SwitchbladeConfig()
         config.aes256encryptionKey = Data("big_sprouts".utf8)
         config.hashQueriableProperties = true
-        let db = initSQLiteDatabase(config)
+        let db = initSQLiteShardDatabase(config)
         
         let p1 = Person()
         
@@ -345,9 +380,9 @@ extension switchbladeTests {
         }
     }
     
-    func testQueryParamEqualls() {
+    func testShardQueryParamEqualls() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -375,9 +410,9 @@ extension switchbladeTests {
         XCTFail("failed to write one of the recordss")
     }
     
-    func testQueryParamGreaterThan() {
+    func testShardQueryParamGreaterThan() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -403,9 +438,9 @@ extension switchbladeTests {
         XCTFail("failed to write one of the recordss")
     }
     
-    func testQueryParamLessThan() {
+    func testShardQueryParamLessThan() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -434,9 +469,9 @@ extension switchbladeTests {
         XCTFail("failed to write one of the recordss")
     }
     
-    func testQueryParamIsNull() {
+    func testShardQueryParamIsNull() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -464,11 +499,11 @@ extension switchbladeTests {
         XCTFail("failed to write one of the recordss")
     }
     
-    func testTransaction() {
+    func testShardTransaction() {
         
         var pass = false
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         db.perform {
             let p1 = Person()
             p1.Name = "Adrian Herridge"
@@ -491,12 +526,12 @@ extension switchbladeTests {
         
     }
     
-    func testMultipleTransactions() {
+    func testShardMultipleTransactions() {
         
         var pass = false
         
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         db.perform {
             let p1 = Person()
             p1.Name = "Adrian Herridge"
@@ -522,11 +557,11 @@ extension switchbladeTests {
         
     }
     
-    func testLoopedTransactions() {
+    func testShardLoopedTransactions() {
         
         var pass = false
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         db.perform {
             for idx in 1...10 {
                 let p = Person()
@@ -548,11 +583,11 @@ extension switchbladeTests {
         
     }
     
-    func testTransactionsInsertDelete() {
+    func testShardTransactionsInsertDelete() {
         
         var pass = false
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         db.perform {
             for idx in 1...10 {
                 let p = Person()
@@ -574,11 +609,11 @@ extension switchbladeTests {
         
     }
     
-    func testTransactionRollback() {
+    func testShardTransactionRollback() {
         
         var pass = false
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         db.perform {
             for idx in 1...100 {
                 let p = Person()
@@ -607,9 +642,9 @@ extension switchbladeTests {
         
     }
     
-    func testBindingsObject() {
+    func testShardBindingsObject() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         let p1 = Person()
         var pass = false
         p1.Name = "Adrian Herridge"
@@ -631,9 +666,9 @@ extension switchbladeTests {
         
     }
     
-    func testBindingsKeyspace() {
+    func testShardBindingsKeyspace() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         let p1 = Person()
         var pass = false
         p1.Name = "Adrian Herridge"
@@ -663,9 +698,9 @@ extension switchbladeTests {
         
     }
     
-    func testBindingsQuery() {
+    func testShardBindingsQuery() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         let p1 = Person()
         p1.Name = "Adrian Herridge"
         p1.Age = 40
@@ -690,9 +725,9 @@ extension switchbladeTests {
         
     }
     
-    func testBindingsObjectReference() {
+    func testShardBindingsObjectReference() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         let p1 = Person()
         var pass = false
         p1.Name = "Adrian Herridge"
@@ -713,9 +748,9 @@ extension switchbladeTests {
         
     }
     
-    func testResultFromBinding() {
+    func testShardResultFromBinding() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         let p1 = Person()
         p1.Name = "Adrian Herridge"
         p1.Age = 40
@@ -750,7 +785,7 @@ extension switchbladeTests {
         
     }
     
-    func testReadWriteFromUserDefaults() {
+    func testShardReadWriteFromUserDefaults() {
         
         let db = try! Switchblade(provider: UserDefaultsProvider())
         
@@ -774,9 +809,9 @@ extension switchbladeTests {
         
     }
     
-    func testPersistObjectCompositeKey() {
+    func testShardPersistObjectCompositeKey() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -800,9 +835,9 @@ extension switchbladeTests {
         
     }
     
-    func testPersistQueryObjectCompositeKey() {
+    func testShardPersistQueryObjectCompositeKey() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         
@@ -823,9 +858,9 @@ extension switchbladeTests {
         
     }
     
-    func testPersistMultipleIterate() {
+    func testShardPersistMultipleIterate() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -855,9 +890,9 @@ extension switchbladeTests {
         XCTFail("failed to write one of the records")
     }
     
-    func testPersistMultipleIterateInspect() {
+    func testShardPersistMultipleIterateInspect() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -889,9 +924,9 @@ extension switchbladeTests {
         XCTFail("failed to write one of the records")
     }
     
-    func testTTLTimeout() {
+    func testShardTTLTimeout() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let p1 = Person()
         let p2 = Person()
@@ -923,9 +958,9 @@ extension switchbladeTests {
         XCTFail("failed to write one of the records")
     }
     
-    func testObjectMigration() {
+    func testShardObjectMigration() {
         
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
         
         let id = UUID()
         
@@ -961,9 +996,9 @@ extension switchbladeTests {
         
     }
     
-    func testFilter() {
+    func testShardFilter() {
 
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
 
         let p1 = Person()
         p1.Name = "Adrian Herridge"
@@ -989,9 +1024,9 @@ extension switchbladeTests {
 
     }
 
-    func testFilterMultiple() {
+    func testShardFilterMultiple() {
 
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
 
         let p1 = Person()
         p1.Name = "Adrian Herridge"
@@ -1017,9 +1052,9 @@ extension switchbladeTests {
 
     }
 
-    func testFilterMultipleAND() {
+    func testShardFilterMultipleAND() {
 
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
 
         let p1 = Person()
         p1.Name = "Adrian Herridge"
@@ -1045,9 +1080,9 @@ extension switchbladeTests {
 
     }
 
-    func testFilterMultipleNegative() {
+    func testShardFilterMultipleNegative() {
 
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
 
         let p1 = Person()
         p1.Name = "Adrian Herridge"
@@ -1073,9 +1108,9 @@ extension switchbladeTests {
 
     }
 
-    func testFilterProtocolConformance() {
+    func testShardFilterProtocolConformance() {
 
-        let db = initSQLiteDatabase()
+        let db = initSQLiteShardDatabase()
 
         let p1 = PersonFilterable()
         p1.Name = "Adrian Herridge"
