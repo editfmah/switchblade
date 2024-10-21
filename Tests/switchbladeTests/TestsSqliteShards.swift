@@ -14,7 +14,7 @@ fileprivate func initSQLiteShardDatabase(_ config: SwitchbladeConfig? = nil) -> 
     let path = FileManager.default.currentDirectoryPath + "/" + UUID().uuidString
     print("Database(s) opened in: \(path)/")
     try? FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
-    let db = Switchblade(provider: SQLiteShardProvider(path: "\(path)/", type: .partitionKeyspace), configuration: config) { (success, provider, error) in
+    let db = Switchblade(provider: SQLiteShardProvider(path: "\(path)/"), configuration: config) { (success, provider, error) in
         XCTAssert(error == nil, "failed to initialiase")
     }
     return db
