@@ -10,6 +10,11 @@ import Foundation
 import Dispatch
 import CryptoSwift
 
+public enum ShardPartitioningType {
+    case partition
+    case partitionKeyspace
+}
+
 public class SQLiteShardProvider: DataProvider {
 
     public var config: SwitchbladeConfig!
@@ -18,17 +23,18 @@ public class SQLiteShardProvider: DataProvider {
     fileprivate var lock = Mutex()
     fileprivate var dbs: [String : SQLiteProvider] = [:]
 
-    fileprivate func provider(_ partition: String) -> SQLiteProvider {
+    fileprivate func provider(_ partition: String, keyspace: String) -> SQLiteProvider {
         var provider: SQLiteProvider!
+        let index = partition + (type == .partitionKeyspace ? keyspace : "")
         lock.mutex {
-            if let p = dbs[partition.md5()] {
+            if let p = dbs[index.md5()] {
                 provider = p
             } else {
-                provider = SQLiteProvider(path: "\(path!)/\(partition).sqlite")
+                provider = SQLiteProvider(path: "\(path!)/\(index.md5()).sqlite")
                 provider.config = config
                 provider.blade = blade
                 try? provider.open()
-                dbs[partition.md5()] = provider
+                dbs[index.md5()] = provider
             }
         }
         return provider
@@ -43,10 +49,12 @@ public class SQLiteShardProvider: DataProvider {
     }
         
     private var path: String?
+    private var type: ShardPartitioningType
     let decoder: JSONDecoder = JSONDecoder()
     
-    public init(path: String)  {
+    public init(path: String, type: ShardPartitioningType)  {
         self.path = path
+        self.type = type
     }
     
     public func open() throws {
@@ -74,27 +82,27 @@ public class SQLiteShardProvider: DataProvider {
     }
     
     public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, filter: [String : String]?, _ object: T) -> Bool where T : Decodable, T : Encodable {
-        return provider(partition).put(partition: partition, key: key, keyspace: keyspace, ttl: ttl, filter: filter, object)
+        return provider(partition, keyspace: keyspace).put(partition: partition, key: key, keyspace: keyspace, ttl: ttl, filter: filter, object)
     }
     
     public func delete(partition: String, key: String, keyspace: String) -> Bool {
-        return provider(partition).delete(partition: partition, key: key, keyspace: keyspace)
+        return provider(partition, keyspace: keyspace).delete(partition: partition, key: key, keyspace: keyspace)
     }
     
     public func get<T>(partition: String, key: String, keyspace: String) -> T? where T : Decodable, T : Encodable {
-        return provider(partition).get(partition: partition, key: key, keyspace: keyspace)
+        return provider(partition, keyspace: keyspace).get(partition: partition, key: key, keyspace: keyspace)
     }
     
     public func query<T>(partition: String, keyspace: String, filter: [String : String]?, map: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
-        return provider(partition).query(partition: partition, keyspace: keyspace, filter: filter, map: map)
+        return provider(partition, keyspace: keyspace).query(partition: partition, keyspace: keyspace, filter: filter, map: map)
     }
     
     public func all<T>(partition: String, keyspace: String, filter: [String : String]?) -> [T] where T : Decodable, T : Encodable {
-        return provider(partition).all(partition: partition, keyspace: keyspace, filter: filter)
+        return provider(partition, keyspace: keyspace).all(partition: partition, keyspace: keyspace, filter: filter)
     }
     
     public func iterate<T>(partition: String, keyspace: String, filter: [String : String]?, iterator: ((T) -> Void)) where T : Decodable, T : Encodable {
-        return provider(partition).iterate(partition: partition, keyspace: keyspace, filter: filter, iterator: iterator)
+        return provider(partition, keyspace: keyspace).iterate(partition: partition, keyspace: keyspace, filter: filter, iterator: iterator)
     }
     
     public func migrate<FromType, ToType>(from: FromType.Type, to: ToType.Type, migration: @escaping ((FromType) -> ToType?)) where FromType : SchemaVersioned, ToType : SchemaVersioned {
@@ -105,7 +113,7 @@ public class SQLiteShardProvider: DataProvider {
     }
     
     public func ids(partition: String, keyspace: String, filter: [String : String]?) -> [String] {
-        return provider(partition).ids(partition: partition, keyspace: keyspace, filter: filter)
+        return provider(partition, keyspace: keyspace).ids(partition: partition, keyspace: keyspace, filter: filter)
     }
     
 }
