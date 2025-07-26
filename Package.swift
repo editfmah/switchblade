@@ -1,4 +1,4 @@
-// swift-tools-version:5.7
+// swift-tools-version: 5.7
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 import PackageDescription
 
@@ -12,17 +12,15 @@ let package = Package(
         .library(
             name: "Switchblade",
             targets: ["Switchblade"]),
-    ],
-    dependencies: [
+    ], dependencies: [
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", from: "1.8.0")
-    ],
-    targets: [
+    ], targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages which this package depends on.
         .systemLibrary(
-                    name: "CSQLite",
-                    path: "./Sources/CSQLite",
-                    providers: [.apt(["libsqlite3-dev"])]),
+            name: "CSQLite",
+            path: "./Sources/CSQLite",
+            providers: [.apt(["libsqlite3-dev"])]),
         .target(
             name: "Switchblade",
             dependencies: ["CSQLite","CryptoSwift"],
@@ -31,6 +29,6 @@ let package = Package(
             name: "SwitchbladeTests",
             dependencies: ["Switchblade"],
             path: "./Tests/switchbladeTests"),
-    ]
+    ], swiftLanguageVersions: [.v5]
 )
 
