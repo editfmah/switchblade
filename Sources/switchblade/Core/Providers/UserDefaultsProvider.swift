@@ -11,6 +11,12 @@ import Foundation
 import Dispatch
 import CryptoSwift
 
+fileprivate extension Data {
+    var bytes : [UInt8]{
+        return [UInt8](self)
+    }
+}
+
 public class UserDefaultsProvider: DataProvider {
     
     public var config: SwitchbladeConfig!
