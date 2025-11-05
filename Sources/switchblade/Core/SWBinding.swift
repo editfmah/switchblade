@@ -81,7 +81,7 @@ public class SWBinding<T:Codable> : SwitchbladeBinding {
         // work out which kind of update we are after Key, Keyspace, Key & Keyspace
         if let key = key, let keyspace = keyspace {
             // record
-            result = blade.get(key: key, keyspace: keyspace)
+            result = blade.get(keyspace: keyspace, key: key)
             if !initial {
                 self.closure?(result)
             }

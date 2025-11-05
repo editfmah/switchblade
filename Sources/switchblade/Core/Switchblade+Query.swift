@@ -12,7 +12,7 @@ fileprivate var default_partition = "default"
 
 extension Switchblade : SwitchbadeRetriever {
     
-    public func get<T>(partition: String? = nil, key: PrimaryKeyType? = nil, keyspace: String? = nil, compositeKeys: [CompositeComponent]? = nil) -> T? where T : Decodable, T : Encodable {
+    public func get<T>(partition: String? = nil, keyspace: String? = nil, key: PrimaryKeyType? = nil, compositeKeys: [CompositeComponent]? = nil) -> T? where T : Decodable, T : Encodable {
         
         let p = partition ?? default_partition
         let ks = keyspace ?? default_keyspace

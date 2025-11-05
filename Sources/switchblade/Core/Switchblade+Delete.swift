@@ -74,7 +74,7 @@ extension Switchblade: SwitchbadeRemove {
         return false
     }
     
-    @discardableResult public func remove(key: PrimaryKeyType, keyspace: String) -> Bool {
+    @discardableResult public func remove(keyspace: String, key: PrimaryKeyType) -> Bool {
         if provider.delete(partition: default_partition, key: key.key(), keyspace: keyspace) {
             notify(key: key, keyspace: keyspace)
             return true
@@ -82,7 +82,7 @@ extension Switchblade: SwitchbadeRemove {
         return false
     }
     
-    @discardableResult public func remove(partition: String, key: PrimaryKeyType, keyspace: String) -> Bool {
+    @discardableResult public func remove(partition: String, keyspace: String, key: PrimaryKeyType) -> Bool {
         if provider.delete(partition: partition, key: key.key(), keyspace: keyspace) {
             notify(key: key, keyspace: keyspace)
             return true
