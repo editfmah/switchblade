@@ -26,7 +26,7 @@ extension Switchblade : SwitchbadeBinder {
         return SWBinding<T>(self, object: object, onChange)
     }
     
-    public func bind<T>(key: PrimaryKeyType, keyspace: String,_ onChange: ((T?)->Void)? = nil) -> SWBinding<T> where T : Decodable, T : Encodable {
+    public func bind<T>(keyspace: String, key: PrimaryKeyType,_ onChange: ((T?)->Void)? = nil) -> SWBinding<T> where T : Decodable, T : Encodable {
         return SWBinding<T>(self, key: key, keyspace: keyspace, onChange)
     }
     
