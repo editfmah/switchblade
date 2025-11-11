@@ -465,10 +465,9 @@ extension switchbladeTests {
     }
     
     func testTransaction() {
-        
-        var pass = false
-        
         let db = initSQLiteDatabase()
+        let exp = expectation(description: "transaction finished")
+
         db.perform {
             let p1 = Person()
             p1.Name = "Adrian Herridge"
@@ -478,32 +477,25 @@ extension switchbladeTests {
             let results: [Person] = db.query(keyspace: "person") { p in
                 return p.Age == 41
             }
-            if results.count == 1 {
-                if let result = results.first, result.Name == "Adrian Herridge" {
-                    pass = true
-                }
-            }
+            XCTAssertEqual(results.count, 1)
+            XCTAssertEqual(results.first?.Name, "Adrian Herridge")
+            exp.fulfill()
         }
-        
-        if !pass {
-            XCTFail("failed to write one of the recordss")
-        }
-        
+
+        waitForExpectations(timeout: 5.0)
     }
     
     func testMultipleTransactions() {
-        
-        var pass = false
-        
-        
         let db = initSQLiteDatabase()
+        let exp = expectation(description: "multiple transactions finished")
+
         db.perform {
             let p1 = Person()
             p1.Name = "Adrian Herridge"
             p1.Age = 41
             db.put(p1)
         }
-        
+
         db.perform {
             let p = Person()
             p.Name = "Neil Bostrom"
@@ -511,22 +503,17 @@ extension switchbladeTests {
             db.put(p)
         }.finally {
             let results: [Person] = db.all(keyspace: "person")
-            if results.count == 2 {
-                pass = true
-            }
+            XCTAssertEqual(results.count, 2)
+            exp.fulfill()
         }
-        
-        if !pass {
-            XCTFail("failed to write one of the recordss")
-        }
-        
+
+        waitForExpectations(timeout: 5.0)
     }
     
     func testLoopedTransactions() {
-        
-        var pass = false
-        
         let db = initSQLiteDatabase()
+        let exp = expectation(description: "looped transaction finished")
+
         db.perform {
             for idx in 1...10 {
                 let p = Person()
@@ -536,23 +523,17 @@ extension switchbladeTests {
             }
         }.finally {
             let results: [Person] = db.all(keyspace: "person")
-            if results.count == 10 {
-                pass = true
-            }
-            
+            XCTAssertEqual(results.count, 10)
+            exp.fulfill()
         }
-        
-        if !pass {
-            XCTFail("failed to write one of the recordss")
-        }
-        
+
+        waitForExpectations(timeout: 5.0)
     }
     
     func testTransactionsInsertDelete() {
-        
-        var pass = false
-        
         let db = initSQLiteDatabase()
+        let exp = expectation(description: "insert delete transaction finished")
+
         db.perform {
             for idx in 1...10 {
                 let p = Person()
@@ -563,22 +544,17 @@ extension switchbladeTests {
             }
         }.finally {
             let results: [Person] = db.all(keyspace: "person")
-            if results.count == 0 {
-                pass = true
-            }
+            XCTAssertEqual(results.count, 0)
+            exp.fulfill()
         }
-        
-        if !pass {
-            XCTFail("failed to write one of the recordss")
-        }
-        
+
+        waitForExpectations(timeout: 5.0)
     }
     
     func testTransactionRollback() {
-        
-        var pass = false
-        
         let db = initSQLiteDatabase()
+        let exp = expectation(description: "transaction rolled back")
+
         db.perform {
             for idx in 1...100 {
                 let p = Person()
@@ -587,24 +563,18 @@ extension switchbladeTests {
                 db.put(p)
             }
             let results: [Person] = db.all(keyspace: "person")
-            if results.count == 100 {
-                pass = true
-            }
+            XCTAssertEqual(results.count, 100)
             db.failTransaction()
         }.success {
-            pass = false
+            XCTFail("Transaction should have rolled back")
+            exp.fulfill()
         }.failure {
-            pass = false
             let results: [Person] = db.all(keyspace: "person")
-            if results.count == 0 {
-                pass = true
-            }
+            XCTAssertEqual(results.count, 0)
+            exp.fulfill()
         }
-        
-        if !pass {
-            XCTFail("failed to write one of the recordss")
-        }
-        
+
+        waitForExpectations(timeout: 5.0)
     }
     
     func testBindingsObject() {
@@ -1104,5 +1074,92 @@ extension switchbladeTests {
 
     }
     
-}
+    func testUpdateExistingObject() {
+        let db = initSQLiteDatabase()
 
+        let p = Person()
+        p.Name = "Original Name"
+        p.Age = 30
+        XCTAssertTrue(db.put(p))
+
+        // Update and write again
+        p.Name = "Updated Name"
+        p.Age = 31
+        XCTAssertTrue(db.put(p))
+
+        if let fetched: Person = db.get(keyspace: p.keyspace, key: p.key) {
+            XCTAssertEqual(fetched.Name, "Updated Name")
+            XCTAssertEqual(fetched.Age, 31)
+        } else {
+            XCTFail("failed to retrieve updated object")
+        }
+    }
+
+    func testDeleteNonExistingObject() {
+        let db = initSQLiteDatabase()
+
+        let p = Person()
+        p.Name = "Ghost"
+        p.Age = 99
+
+        // Attempt to remove without putting first
+        db.remove(p)
+
+        let results: [Person] = db.all(keyspace: "person")
+        XCTAssertEqual(results.count, 0)
+    }
+
+    func testIDsEmptyOnEmptyKeyspace() {
+        let db = initSQLiteDatabase()
+        let ids: [String] = db.ids(keyspace: "person")
+        XCTAssertEqual(ids.count, 0)
+    }
+
+    func testTTLNoTimeout() {
+        let db = initSQLiteDatabase()
+
+        let p = Person()
+        p.Name = "Short TTL"
+        p.Age = 1
+
+        XCTAssertTrue(db.put(ttl: 5, p))
+        // Ensure it hasn't expired yet
+        Thread.sleep(forTimeInterval: 1.0)
+
+        let results: [Person] = db.all(keyspace: p.keyspace)
+        XCTAssertEqual(results.count, 1)
+    }
+
+    func testQueryNoResults() {
+        let db = initSQLiteDatabase()
+
+        let p1 = Person()
+        p1.Name = "A"
+        p1.Age = 10
+        _ = db.put(p1)
+
+        let p2 = Person()
+        p2.Name = "B"
+        p2.Age = 20
+        _ = db.put(p2)
+
+        let results: [Person] = db.query(keyspace: p1.keyspace) { p in
+            return p.Age == 999
+        }
+        XCTAssertEqual(results.count, 0)
+    }
+
+    func testPersistQueryObjectCompositeKeyNegative() {
+        let db = initSQLiteDatabase()
+
+        let p1 = Person()
+        p1.Name = "Adrian Herridge"
+        p1.Age = 40
+        XCTAssertTrue(db.put(compositeKeys: ["ad",1,123,"test",p1.PersonId],p1))
+
+        // Query with wrong composite keys should return nil
+        let retrieved: Person? = db.get(compositeKeys: ["wrong", 2, 456, "nope", UUID()])
+        XCTAssertNil(retrieved)
+    }
+    
+}
