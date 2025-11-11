@@ -7,6 +7,8 @@
 
 import Foundation
 
+// Switchblade is marked @unchecked Sendable; provider operations are internally synchronized.
+
 fileprivate var default_keyspace = "default"
 fileprivate var default_partition = "default"
 

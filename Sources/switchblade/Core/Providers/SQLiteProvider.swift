@@ -122,7 +122,6 @@ CREATE TABLE IF NOT EXISTS Data (
                 } else {
                     // error in statement
                     debugPrint(String(cString: sqlite3_errmsg(db)))
-                    Switchblade.errors[blade.instance] = true
                     throw DatabaseError.Execute(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
                 }
                 
@@ -179,7 +178,6 @@ CREATE TABLE IF NOT EXISTS Data (
             }
         } else {
             print(String(cString: sqlite3_errmsg(db)))
-            Switchblade.errors[blade.instance] = true
         }
         
         sqlite3_finalize(stmt)
@@ -222,7 +220,6 @@ CREATE TABLE IF NOT EXISTS Data (
                     }
                 } else {
                     print(String(cString: sqlite3_errmsg(db)))
-                    Switchblade.errors[blade.instance] = true
                 }
                 
                 sqlite3_finalize(stmt)
@@ -303,7 +300,6 @@ CREATE TABLE IF NOT EXISTS Data (
             }
         } else {
             print(String(cString: sqlite3_errmsg(db)))
-            Switchblade.errors[blade.instance] = true
         }
         
         sqlite3_finalize(stmt)
@@ -347,7 +343,6 @@ CREATE TABLE IF NOT EXISTS Data (
                 }
             } else {
                 print(String(cString: sqlite3_errmsg(db)))
-                Switchblade.errors[blade.instance] = true
                 throw DatabaseError.Query(.SyntaxError("\(String(cString: sqlite3_errmsg(db)))"))
             }
             
@@ -410,7 +405,6 @@ CREATE TABLE IF NOT EXISTS Data (
                 }
             } else {
                 print(String(cString: sqlite3_errmsg(db)))
-                Switchblade.errors[blade.instance] = true
             }
             
             sqlite3_finalize(stmt)

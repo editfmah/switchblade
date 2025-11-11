@@ -29,6 +29,6 @@ let package = Package(
             name: "SwitchbladeTests",
             dependencies: ["Switchblade"],
             path: "./Tests/switchbladeTests"),
-    ], swiftLanguageVersions: [.v5]
+    ]/*, swiftLanguageVersions: [.v5]*/
 )
 

@@ -10,27 +10,16 @@ import Foundation
 extension Switchblade: Atomic {
     
     @discardableResult public func perform(_ closure: () -> ()) -> AtomicPostAction {
-        var succeed = true
-        if let mutex = Switchblade.locks[instance] {
-            mutex.mutex {
-                Switchblade.errors[instance] = false
-                provider.transact(.begin)
-                closure()
-                if let errors = Switchblade.errors[instance] {
-                    if errors {
-                        provider.transact(.rollback)
-                        succeed = false
-                    } else {
-                        provider.transact(.commit)
-                    }
-                }
-            }
+        lock.mutex {
+            provider.transact(.begin)
+            closure()
+            provider.transact(.commit)
         }
-        return AtomicPostAction(self, succeed)
+        return AtomicPostAction(self, true)
     }
     
     public func failTransaction() {
-        Switchblade.errors[instance] = true
+        
     }
     
 }

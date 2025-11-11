@@ -1,0 +1,27 @@
+//
+//  SwitchbladeInterface.swift
+//  
+//
+//  Created by Alex Smith on 2023-04-22.
+//
+
+import Foundation
+
+public protocol SwitchbladeInterface: Sendable {
+    func toggleSwitch(on: Bool)
+    func switchState() -> Bool
+}
+
+public class SwitchbladeController: SwitchbladeInterface {
+    private var isOn = false
+    
+    public init() {}
+    
+    public func toggleSwitch(on: Bool) {
+        isOn = on
+    }
+    
+    public func switchState() -> Bool {
+        return isOn
+    }
+}

@@ -1,17 +1,14 @@
 import Dispatch
 import Foundation
 
-public class Switchblade : SwitchbladeInterface {
+public final class Switchblade: SwitchbladeInterface, @unchecked Sendable {
     
+    let lock = Mutex()
     let instance: UUID = UUID()
     var provider: DataProvider
     var config: SwitchbladeConfig = SwitchbladeConfig()
     
     static var defaultProvider: DataProvider?
-    
-    // atomic functions
-    static var locks: [UUID : Mutex] = [:]
-    static var errors: [UUID : Bool] = [:]
     
     // binding registrations
     internal var bindings: [WeakContainer] = []
@@ -29,8 +26,6 @@ public class Switchblade : SwitchbladeInterface {
             self.provider.config = SwitchbladeConfig()
         }
         
-        Switchblade.locks[instance] = Mutex()
-        Switchblade.errors[instance] = false
         self.provider.blade = self
         
         // now, open the connection
@@ -56,8 +51,7 @@ public class Switchblade : SwitchbladeInterface {
         // now, open the connection
         do {
             try self.provider.open()
-            Switchblade.locks[instance] = Mutex()
-            Switchblade.errors[instance] = false
+            try self.provider.open()
             completion?(true, provider, nil)
         } catch DatabaseError.Init(let e) {
             completion?(false, provider, DatabaseError.Init(e))
@@ -144,3 +138,4 @@ internal extension Switchblade {
         }
     }
 }
+

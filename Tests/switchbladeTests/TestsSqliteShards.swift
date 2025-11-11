@@ -58,7 +58,7 @@ extension switchbladeTests {
         p1.Name = "Adrian Herridge"
         p1.Age = 40
         if db.put(p1) {
-            if let retrieved: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
+            if let retrieved: Person = db.get(keyspace: p1.keyspace, key: p1.key) {
                 print("retrieved item with id \(retrieved.PersonId)")
                 return
             } else {
@@ -323,7 +323,7 @@ extension switchbladeTests {
         p1.Name = "Adrian Herridge"
         p1.Age = 41
         if db.put(p1) {
-            if let _: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
+            if let _: Person = db.get(keyspace: p1.keyspace, key: p1.key) {
                 
             } else {
                 XCTFail("failed to retrieve one of the records")
@@ -345,7 +345,7 @@ extension switchbladeTests {
         p1.Age = 41
         if db.put(p1) {
             config.aes256encryptionKey = Data("small_sprouts".utf8)
-            if let retrieved: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
+            if let retrieved: Person = db.get(keyspace: p1.keyspace, key: p1.key) {
                 XCTFail("failed to retrieve one of the records")
             } else {
                 
@@ -650,7 +650,7 @@ extension switchbladeTests {
         p1.Name = "Adrian Herridge"
         p1.Age = 40
         db.put(p1)
-        let binding = db.bind(key: p1.key, keyspace: p1.keyspace) { (person: Person?) in
+        let binding = db.bind(keyspace: p1.keyspace, key: p1.key) { (person: Person?) in
             print("binding updated for Person object")
             pass = true
         }
@@ -794,14 +794,14 @@ extension switchbladeTests {
         p1.Age = 43
         db.put(p1)
         
-        if let _: Person = db.get(key: p1.key, keyspace: p1.keyspace) {
+        if let _: Person = db.get(keyspace: p1.keyspace, key: p1.key) {
             
         } else {
             XCTFail("failed to get object from provider")
         }
         
         let db2 = try! Switchblade(provider: UserDefaultsProvider())
-        if let p2: Person = db2.get(key: p1.key, keyspace: p1.keyspace) {
+        if let p2: Person = db2.get(keyspace: p1.keyspace, key: p1.key) {
             print("retrieved record for '\(p2.Name ?? "")'")
         } else {
             XCTFail("failed to get object from provider")
@@ -1140,4 +1140,3 @@ extension switchbladeTests {
     }
     
 }
-

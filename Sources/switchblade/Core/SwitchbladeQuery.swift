@@ -7,6 +7,7 @@
 
 import Foundation
 
-internal protocol SwitchbladeQuery {
+internal protocol SwitchbladeQuery: Sendable {
     var blade: Switchblade! { get set }
 }
+
