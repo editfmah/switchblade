@@ -12,13 +12,13 @@ import CryptoSwift
 import CSQLite
 
 public class SQLiteShardProvider: DataProvider {
-
+    
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
     
     fileprivate var lock = Mutex()
     fileprivate var dbs: [String : SQLiteShardInterfaceProvider] = [:]
-
+    
     fileprivate func provider(_ partition: String, keyspace: String) -> SQLiteShardInterfaceProvider {
         var provider: SQLiteShardInterfaceProvider!
         let index = partition + keyspace
@@ -43,12 +43,17 @@ public class SQLiteShardProvider: DataProvider {
         }
         return providers
     }
-        
+    
     private var path: String?
     let decoder: JSONDecoder = JSONDecoder()
     
     public init(path: String)  {
+        let fm = FileManager.default
         self.path = path
+        // create the folder if it does not exist
+        if !fm.fileExists(atPath: self.path!) {
+            try? fm.createDirectory(atPath: self.path!, withIntermediateDirectories: true, attributes: nil)
+        }
     }
     
     public func open() throws {
@@ -204,7 +209,7 @@ CREATE TABLE IF NOT EXISTS Data (
             }
             
         } else {
-           
+            
             try lock.throwingMutex {
                 var values: [Any?] = []
                 for o in params {
@@ -229,7 +234,7 @@ CREATE TABLE IF NOT EXISTS Data (
             }
             
         }
-
+        
     }
     
     fileprivate func iterate<T:Codable>(sql: String, params:[Any?], iterator: ( (T) -> Void)) {
@@ -248,30 +253,30 @@ CREATE TABLE IF NOT EXISTS Data (
                 if columns > 0 {
                     let i = 0
                     switch sqlite3_column_type(stmt, Int32(i)) {
-                    case SQLITE_BLOB:
-                        let d = Data(bytes: sqlite3_column_blob(stmt, Int32(i)), count: Int(sqlite3_column_bytes(stmt, Int32(i))))
-                        if config.aes256encryptionKey == nil {
-                            if let object = try? decoder.decode(T.self, from: d) {
-                                iterator(object)
-                            }
-                        } else {
-                            // this data is to be stored encrypted
-                            if let encKey = config.aes256encryptionKey {
-                                let key = encKey.sha256()
-                                let iv = (encKey + Data(kSaltValue.bytes)).md5()
-                                do {
-                                    let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
-                                    let objectData = try aes.decrypt(d.bytes)
-                                    if let object = try? decoder.decode(T.self, from: Data(bytes: objectData, count: objectData.count)) {
-                                        iterator(object)
+                        case SQLITE_BLOB:
+                            let d = Data(bytes: sqlite3_column_blob(stmt, Int32(i)), count: Int(sqlite3_column_bytes(stmt, Int32(i))))
+                            if config.aes256encryptionKey == nil {
+                                if let object = try? decoder.decode(T.self, from: d) {
+                                    iterator(object)
+                                }
+                            } else {
+                                // this data is to be stored encrypted
+                                if let encKey = config.aes256encryptionKey {
+                                    let key = encKey.sha256()
+                                    let iv = (encKey + Data(kSaltValue.bytes)).md5()
+                                    do {
+                                        let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
+                                        let objectData = try aes.decrypt(d.bytes)
+                                        if let object = try? decoder.decode(T.self, from: Data(bytes: objectData, count: objectData.count)) {
+                                            iterator(object)
+                                        }
+                                    } catch {
+                                        print("encryption error: \(error)")
                                     }
-                                } catch {
-                                    print("encryption error: \(error)")
                                 }
                             }
-                        }
-                    default:
-                        break;
+                        default:
+                            break;
                     }
                 }
                 
@@ -285,49 +290,49 @@ CREATE TABLE IF NOT EXISTS Data (
     }
     
     public func ids(partition: String, keyspace: String, filter: [String : String]?) -> [String] {
-            
-            var results: [String] = []
-            
-            var f: String = ""
-            if let filter = filter, filter.isEmpty == false {
-                for kvp in filter {
-                    let value = "\(kvp.key)=\(kvp.value)".md5()
-                    f += " AND filter LIKE '%\(value)%' "
-                }
+        
+        var results: [String] = []
+        
+        var f: String = ""
+        if let filter = filter, filter.isEmpty == false {
+            for kvp in filter {
+                let value = "\(kvp.key)=\(kvp.value)".md5()
+                f += " AND filter LIKE '%\(value)%' "
             }
+        }
         
         let sql = "SELECT id FROM Data WHERE (ttl IS NULL OR ttl >= ?) \(f) ORDER BY timestamp ASC;"
-            
-            // now query the database
-            lock.mutex {
-                var stmt: OpaquePointer?
-                if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
-                    bind(stmt: stmt, params: [ttl_now]);
-                    while sqlite3_step(stmt) == SQLITE_ROW {
-                        
-                        let columns = sqlite3_column_count(stmt)
-                        if columns > 0 {
-                            let i = 0
-                            switch sqlite3_column_type(stmt, Int32(i)) {
+        
+        // now query the database
+        lock.mutex {
+            var stmt: OpaquePointer?
+            if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
+                bind(stmt: stmt, params: [ttl_now]);
+                while sqlite3_step(stmt) == SQLITE_ROW {
+                    
+                    let columns = sqlite3_column_count(stmt)
+                    if columns > 0 {
+                        let i = 0
+                        switch sqlite3_column_type(stmt, Int32(i)) {
                             case SQLITE_TEXT:
                                 let value = String.init(cString:sqlite3_column_text(stmt, Int32(i)))
                                 results.append(value)
                             default:
                                 break;
-                            }
                         }
-                        
                     }
-                } else {
-                    print(String(cString: sqlite3_errmsg(db)))
+                    
                 }
-                
-                sqlite3_finalize(stmt)
+            } else {
+                print(String(cString: sqlite3_errmsg(db)))
             }
-        
-        
             
-            return results
+            sqlite3_finalize(stmt)
+        }
+        
+        
+        
+        return results
         
     }
     
@@ -352,48 +357,48 @@ CREATE TABLE IF NOT EXISTS Data (
                     if sqlite3_column_type(stmt, Int32(4)) == SQLITE_INTEGER {
                         ttl = Int(sqlite3_column_int64(stmt, Int32(4))) - ttl_now
                     }
-                
+                    
                     switch sqlite3_column_type(stmt, Int32(0)) {
-                    case SQLITE_BLOB:
-                        let d = Data(bytes: sqlite3_column_blob(stmt, Int32(0)), count: Int(sqlite3_column_bytes(stmt, Int32(0))))
-                        if config.aes256encryptionKey == nil {
-                            if let object = try? decoder.decode(T.self, from: d) {
-                                if let newObject = iterator(object) {
-                                    var filters: [String:String] = [:]
-                                    if let filterable = newObject as? Filterable {
-                                        filters = filterable.filters.dictionary
-                                    }
-                                    let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filters, newObject)
-                                } else {
-                                    let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
-                                }
-                            }
-                        } else {
-                            // this data is to be stored encrypted
-                            if let encKey = config.aes256encryptionKey {
-                                let key = encKey.sha256()
-                                let iv = (encKey + Data(kSaltValue.bytes)).md5()
-                                do {
-                                    let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
-                                    let objectData = try aes.decrypt(d.bytes)
-                                    if let object = try? decoder.decode(T.self, from: Data(bytes: objectData, count: objectData.count)) {
-                                        if let newObject = iterator(object) {
-                                            var filters: [String:String] = [:]
-                                            if let filterable = newObject as? Filterable {
-                                                filters = filterable.filters.dictionary
-                                            }
-                                            let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filters, newObject)
-                                        } else {
-                                            let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
+                        case SQLITE_BLOB:
+                            let d = Data(bytes: sqlite3_column_blob(stmt, Int32(0)), count: Int(sqlite3_column_bytes(stmt, Int32(0))))
+                            if config.aes256encryptionKey == nil {
+                                if let object = try? decoder.decode(T.self, from: d) {
+                                    if let newObject = iterator(object) {
+                                        var filters: [String:String] = [:]
+                                        if let filterable = newObject as? Filterable {
+                                            filters = filterable.filters.dictionary
                                         }
+                                        let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filters, newObject)
+                                    } else {
+                                        let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
                                     }
-                                } catch {
-                                    print("encryption error: \(error)")
+                                }
+                            } else {
+                                // this data is to be stored encrypted
+                                if let encKey = config.aes256encryptionKey {
+                                    let key = encKey.sha256()
+                                    let iv = (encKey + Data(kSaltValue.bytes)).md5()
+                                    do {
+                                        let aes = try AES(key: key.bytes, blockMode: CBC(iv: iv.bytes))
+                                        let objectData = try aes.decrypt(d.bytes)
+                                        if let object = try? decoder.decode(T.self, from: Data(bytes: objectData, count: objectData.count)) {
+                                            if let newObject = iterator(object) {
+                                                var filters: [String:String] = [:]
+                                                if let filterable = newObject as? Filterable {
+                                                    filters = filterable.filters.dictionary
+                                                }
+                                                let _ = self.put(partition: partition, key: id, keyspace: keyspace, ttl: ttl ?? -1, filter: filters, newObject)
+                                            } else {
+                                                let _ = self.delete(partition: partition, key: id, keyspace: keyspace)
+                                            }
+                                        }
+                                    } catch {
+                                        print("encryption error: \(error)")
+                                    }
                                 }
                             }
-                        }
-                    default:
-                        break;
+                        default:
+                            break;
                     }
                 }
                 
@@ -429,12 +434,12 @@ CREATE TABLE IF NOT EXISTS Data (
                         let id = String.init(cString:sqlite3_column_text(stmt, Int32(2)))
                         var value: Data?
                         switch sqlite3_column_type(stmt, Int32(3)) {
-                        case SQLITE_BLOB:
-                            let d = Data(bytes: sqlite3_column_blob(stmt, Int32(3)), count: Int(sqlite3_column_bytes(stmt, Int32(3))))
-                            value = d
-                        default:
-                            value = nil
-                            break;
+                            case SQLITE_BLOB:
+                                let d = Data(bytes: sqlite3_column_blob(stmt, Int32(3)), count: Int(sqlite3_column_bytes(stmt, Int32(3))))
+                                value = d
+                            default:
+                                value = nil
+                                break;
                         }
                         
                         results.append((partition: partition, keyspace: keyspace, id: id, value: value))
@@ -479,23 +484,23 @@ CREATE TABLE IF NOT EXISTS Data (
                     if columns > 0 {
                         for i in 0..<columns {
                             switch sqlite3_column_type(stmt, Int32(i)) {
-                            case SQLITE_BLOB:
-                                let d = Data(bytes: sqlite3_column_blob(stmt, Int32(i)), count: Int(sqlite3_column_bytes(stmt, Int32(i))))
-                                row.append(d)
-                            case SQLITE_INTEGER:
-                                let value = Int(sqlite3_column_int64(stmt, Int32(i)))
-                                row.append(value)
-                            case SQLITE_FLOAT:
-                                let value = Double(sqlite3_column_double(stmt, Int32(i)))
-                                row.append(value)
-                            case SQLITE_TEXT:
-                                let value = String.init(cString:sqlite3_column_text(stmt, Int32(i)))
-                                row.append(value)
-                            case SQLITE_NULL:
-                                row.append(nil)
-                            default:
-                                row.append(nil)
-                                break;
+                                case SQLITE_BLOB:
+                                    let d = Data(bytes: sqlite3_column_blob(stmt, Int32(i)), count: Int(sqlite3_column_bytes(stmt, Int32(i))))
+                                    row.append(d)
+                                case SQLITE_INTEGER:
+                                    let value = Int(sqlite3_column_int64(stmt, Int32(i)))
+                                    row.append(value)
+                                case SQLITE_FLOAT:
+                                    let value = Double(sqlite3_column_double(stmt, Int32(i)))
+                                    row.append(value)
+                                case SQLITE_TEXT:
+                                    let value = String.init(cString:sqlite3_column_text(stmt, Int32(i)))
+                                    row.append(value)
+                                case SQLITE_NULL:
+                                    row.append(nil)
+                                default:
+                                    row.append(nil)
+                                    break;
                             }
                         }
                     }
@@ -516,12 +521,12 @@ CREATE TABLE IF NOT EXISTS Data (
     public func transact(_ mode: transaction) -> Bool {
         do {
             switch mode {
-            case .begin:
-                try execute(sql: "BEGIN TRANSACTION", params: [])
-            case .commit:
-                try execute(sql: "COMMIT TRANSACTION", params: [])
-            case .rollback:
-                try execute(sql: "ROLLBACK TRANSACTION", params: [])
+                case .begin:
+                    try execute(sql: "BEGIN TRANSACTION", params: [])
+                case .commit:
+                    try execute(sql: "COMMIT TRANSACTION", params: [])
+                case .rollback:
+                    try execute(sql: "ROLLBACK TRANSACTION", params: [])
             }
             return true
         } catch {
@@ -637,7 +642,7 @@ CREATE TABLE IF NOT EXISTS Data (
         }
         return nil
     }
-
+    
     @discardableResult
     public func query<T>(partition: String, keyspace: String, filter: [String : String]?, map: ((T) -> Bool)) -> [T] where T : Decodable, T : Encodable {
         var results: [T] = []
