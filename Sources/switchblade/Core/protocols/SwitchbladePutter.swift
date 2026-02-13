@@ -7,9 +7,9 @@
 
 import Foundation
 
-fileprivate var default_keyspace = "default"
-fileprivate var default_partition = "default"
-fileprivate var default_ttl = -1
+fileprivate let default_keyspace = "default"
+fileprivate let default_partition = "default"
+fileprivate let default_ttl = -1
 
 public protocol SwitchbadePutter {
     

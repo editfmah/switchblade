@@ -69,3 +69,5 @@ fastlane/test_output
 
 Package.resolved
 .DS_Store
+*.sqlite
+*.db

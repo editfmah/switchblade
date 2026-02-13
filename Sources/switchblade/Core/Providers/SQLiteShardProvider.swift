@@ -165,11 +165,37 @@ CREATE TABLE IF NOT EXISTS Data (
         // indexes
         _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_ttl ON Data (ttl);", params: [])
         _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_schema ON Data (model,version);", params: [])
-        
+
+        // normalized filter index table
+        _ = try self.execute(sql: """
+CREATE TABLE IF NOT EXISTS DataFilter (
+    id TEXT NOT NULL,
+    filter_hash TEXT NOT NULL,
+    PRIMARY KEY (id, filter_hash)
+);
+""", params: [])
+        _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_filter_lookup ON DataFilter (filter_hash);", params: [])
+
+        // backfill DataFilter from existing Data rows if needed
+        let filterCount = self.query(sql: "SELECT COUNT(*) FROM DataFilter", parameters: [])
+        let dataFilterCount = (filterCount.first?.first as? Int) ?? 0
+        if dataFilterCount == 0 {
+            let rows = self.query(sql: "SELECT id, filter FROM Data WHERE filter IS NOT NULL AND filter != ''", parameters: [])
+            for row in rows {
+                if let id = row[0] as? String, let filterStr = row[1] as? String {
+                    let hashes = filterStr.split(separator: ",").map(String.init)
+                    for hash in hashes {
+                        try self.execute(sql: "INSERT OR IGNORE INTO DataFilter (id, filter_hash) VALUES (?,?);", params: [id, hash])
+                    }
+                }
+            }
+        }
+
         DispatchQueue.global(qos: .default).asyncAfter(deadline: .now() + 60, execute: {
             while self.db != nil {
                 // only clean up data that is over two hours old. This is to allow offline nodes to replay changes when they come back online
                 try? self.execute(sql: "DELETE FROM Data WHERE ttl IS NOT NULL AND ttl < ?;", params: [ttl_now - (7200)])
+                try? self.execute(sql: "DELETE FROM DataFilter WHERE id NOT IN (SELECT id FROM Data);", params: [])
                 Thread.sleep(forTimeInterval: 60)
             }
         })
@@ -294,20 +320,25 @@ CREATE TABLE IF NOT EXISTS Data (
         var results: [String] = []
         
         var f: String = ""
+        var filterParams: [Any?] = []
         if let filter = filter, filter.isEmpty == false {
+            var hashes: [String] = []
             for kvp in filter {
-                let value = "\(kvp.key)=\(kvp.value)".md5()
-                f += " AND filter LIKE '%\(value)%' "
+                hashes.append("\(kvp.key)=\(kvp.value)".md5())
             }
+            let placeholders = hashes.map { _ in "?" }.joined(separator: ",")
+            f = " AND id IN (SELECT id FROM DataFilter WHERE filter_hash IN (\(placeholders)) GROUP BY id HAVING COUNT(DISTINCT filter_hash) = ?)"
+            filterParams.append(contentsOf: hashes as [Any?])
+            filterParams.append(hashes.count)
         }
-        
+
         let sql = "SELECT id FROM Data WHERE (ttl IS NULL OR ttl >= ?) \(f) ORDER BY timestamp ASC;"
-        
+
         // now query the database
         lock.mutex {
             var stmt: OpaquePointer?
             if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
-                bind(stmt: stmt, params: [ttl_now]);
+                bind(stmt: stmt, params: [ttl_now] + filterParams);
                 while sqlite3_step(stmt) == SQLITE_ROW {
                     
                     let columns = sqlite3_column_count(stmt)
@@ -555,6 +586,14 @@ CREATE TABLE IF NOT EXISTS Data (
                                     version,
                                     filter?.compactMap({ "\($0.key)=\($0.value)".md5() }).joined(separator: ",") ?? "",
                                 ])
+                    // Update DataFilter
+                    try execute(sql: "DELETE FROM DataFilter WHERE id = ?;", params: [id])
+                    if let filter = filter, !filter.isEmpty {
+                        for kvp in filter {
+                            let hash = "\(kvp.key)=\(kvp.value)".md5()
+                            try execute(sql: "INSERT INTO DataFilter (id, filter_hash) VALUES (?,?);", params: [id, hash])
+                        }
+                    }
                 } else {
                     // this data is to be stored encrypted
                     if let encKey = config.aes256encryptionKey {
@@ -579,6 +618,14 @@ CREATE TABLE IF NOT EXISTS Data (
                                             version,
                                             filter?.compactMap({ "\($0.key)=\($0.value)".md5() }).joined(separator: ",") ?? "",
                                         ])
+                            // Update DataFilter
+                            try execute(sql: "DELETE FROM DataFilter WHERE id = ?;", params: [id])
+                            if let filter = filter, !filter.isEmpty {
+                                for kvp in filter {
+                                    let hash = "\(kvp.key)=\(kvp.value)".md5()
+                                    try execute(sql: "INSERT INTO DataFilter (id, filter_hash) VALUES (?,?);", params: [id, hash])
+                                }
+                            }
                         } catch {
                             print("encryption error: \(error)")
                         }
@@ -661,32 +708,42 @@ CREATE TABLE IF NOT EXISTS Data (
     }
     
     public func iterate<T>(partition: String, keyspace: String, filter: [String : String]?, iterator: ((T) -> Void)) where T : Decodable, T : Encodable {
-        
+
         var f: String = ""
+        var filterParams: [Any?] = []
         if let filter = filter, filter.isEmpty == false {
+            var hashes: [String] = []
             for kvp in filter {
-                let value = "\(kvp.key)=\(kvp.value)".md5()
-                f += " AND filter LIKE '%\(value)%' "
+                hashes.append("\(kvp.key)=\(kvp.value)".md5())
             }
+            let placeholders = hashes.map { _ in "?" }.joined(separator: ",")
+            f = " AND id IN (SELECT id FROM DataFilter WHERE filter_hash IN (\(placeholders)) GROUP BY id HAVING COUNT(DISTINCT filter_hash) = ?)"
+            filterParams.append(contentsOf: hashes as [Any?])
+            filterParams.append(hashes.count)
         }
-        
-        iterate(sql: "SELECT value FROM Data WHERE (ttl IS NULL OR ttl >= ?) \(f) ORDER BY timestamp ASC;", params: [ttl_now], iterator: iterator)
-        
+
+        iterate(sql: "SELECT value FROM Data WHERE (ttl IS NULL OR ttl >= ?) \(f) ORDER BY timestamp ASC;", params: [ttl_now] + filterParams, iterator: iterator)
+
     }
     
     @discardableResult
     public func all<T>(partition: String, keyspace: String, filter: [String : String]?) -> [T] where T : Decodable, T : Encodable {
         do {
-            
+
             var f: String = ""
+            var filterParams: [Any?] = []
             if let filter = filter, filter.isEmpty == false {
+                var hashes: [String] = []
                 for kvp in filter {
-                    let value = "\(kvp.key)=\(kvp.value)".md5()
-                    f += " AND filter LIKE '%\(value)%' "
+                    hashes.append("\(kvp.key)=\(kvp.value)".md5())
                 }
+                let placeholders = hashes.map { _ in "?" }.joined(separator: ",")
+                f = " AND id IN (SELECT id FROM DataFilter WHERE filter_hash IN (\(placeholders)) GROUP BY id HAVING COUNT(DISTINCT filter_hash) = ?)"
+                filterParams.append(contentsOf: hashes as [Any?])
+                filterParams.append(hashes.count)
             }
-            
-            let data = try query(sql: "SELECT \"\", \"\", id, value FROM Data WHERE (ttl IS NULL OR ttl >= ?) \(f) ORDER BY timestamp ASC;", params: [ttl_now])
+
+            let data = try query(sql: "SELECT \"\", \"\", id, value FROM Data WHERE (ttl IS NULL OR ttl >= ?) \(f) ORDER BY timestamp ASC;", params: [ttl_now] + filterParams)
             var aggregation: [Data] = []
             for d in data.map({ $0.value }) {
                 if config.aes256encryptionKey == nil {

@@ -13,7 +13,8 @@ fileprivate func initSQLiteShardDatabase(_ config: SwitchbladeConfig? = nil) -> 
     
     let path = UUID().uuidString
     print("Database(s) opened in: \(path)/")
-    let db = Switchblade(provider: SQLiteShardProvider(folder: "\(path)/"), configuration: config) { (success, provider, error) in
+    let f = try! Switchblade(provider: UserDefaultsProvider())
+    let db = Switchblade(provider: SQLiteShardProvider(path: "\(path)/"), configuration: config) { (success, provider, error) in
         XCTAssert(error == nil, "failed to initialiase")
     }
     return db
