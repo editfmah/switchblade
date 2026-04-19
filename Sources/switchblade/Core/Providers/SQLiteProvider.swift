@@ -35,12 +35,27 @@ public class SQLiteProvider: DataProvider {
     
     public func open() throws {
         
-        // create any folders up until this point as well
-        let _ = sqlite3_open("\(p!)", &db);
-        if db == nil {
+        // Open the connection in serialized (full-mutex) mode. Even though
+        // every call into the provider is guarded by `lock`, FULLMUTEX gives
+        // SQLite-level protection against accidental cross-thread use of
+        // statement handles or background callbacks.
+        let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
+        let rc = sqlite3_open_v2(p!, &db, flags, nil)
+        if rc != SQLITE_OK || db == nil {
+            if db != nil { sqlite3_close(db); db = nil }
             throw DatabaseError.Init(.UnableToCreateLocalDatabase)
         }
-        
+
+        // Wait up to 5 seconds for the database to become available rather
+        // than immediately returning SQLITE_BUSY when another connection or
+        // process is mid-write.
+        sqlite3_busy_timeout(db, 5000)
+
+        // WAL improves read/write concurrency. Best-effort — ignore errors so
+        // we still function on filesystems that do not support WAL.
+        sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nil, nil, nil)
+        sqlite3_exec(db, "PRAGMA synchronous=NORMAL;", nil, nil, nil)
+
         // tables
         _ = try self.execute(sql: """
 CREATE TABLE IF NOT EXISTS Data (
@@ -100,8 +115,12 @@ CREATE TABLE IF NOT EXISTS DataFilter (
     }
     
     public func close() throws {
-        sqlite3_close(db)
-        db = nil;
+        lock.mutex {
+            if db != nil {
+                sqlite3_close(db)
+                db = nil
+            }
+        }
     }
     
     fileprivate func makeId(_ key: String) -> String {
@@ -162,15 +181,21 @@ CREATE TABLE IF NOT EXISTS DataFilter (
     
     fileprivate func iterate<T:Codable>(sql: String, params:[Any?], iterator: ( (T) -> Void)) {
         
-        var values: [Any?] = []
-        for o in params {
-            values.append(o)
-        }
-        
-        var stmt: OpaquePointer?
-        if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
-            bind(stmt: stmt, params: values);
-            while sqlite3_step(stmt) == SQLITE_ROW {
+        // Must hold the connection lock for the entire prepare/step/finalize
+        // sequence — sqlite3 statement handles are tied to the connection
+        // and cannot be safely interleaved with other threads' calls.
+        // The Mutex is recursive, so callbacks that re-enter the provider
+        // (e.g. via the iterator) will not deadlock.
+        lock.mutex {
+            var values: [Any?] = []
+            for o in params {
+                values.append(o)
+            }
+            
+            var stmt: OpaquePointer?
+            if sqlite3_prepare_v2(db, sql, Int32(sql.utf8.count), &stmt, nil) == SQLITE_OK {
+                bind(stmt: stmt, params: values);
+                while sqlite3_step(stmt) == SQLITE_ROW {
                 
                 let columns = sqlite3_column_count(stmt)
                 if columns > 0 {
@@ -204,11 +229,12 @@ CREATE TABLE IF NOT EXISTS DataFilter (
                 }
                 
             }
-        } else {
-            print(String(cString: sqlite3_errmsg(db)))
+            } else {
+                print(String(cString: sqlite3_errmsg(db)))
+            }
+            
+            sqlite3_finalize(stmt)
         }
-        
-        sqlite3_finalize(stmt)
         
     }
     
@@ -268,6 +294,10 @@ CREATE TABLE IF NOT EXISTS DataFilter (
     
     fileprivate func migrate<T:SchemaVersioned>(iterator: ( (T) -> SchemaVersioned?)) {
         
+        // Hold the connection lock for the entire prepare/step/finalize plus
+        // re-entrant put/delete calls invoked from the migration callback.
+        // Mutex is recursive — re-entry from the same thread is safe.
+        lock.mutex {
         let fromInfo = T.version
         let values: [Any?] = [fromInfo.objectName, fromInfo.version, ttl_now]
         
@@ -338,7 +368,7 @@ CREATE TABLE IF NOT EXISTS DataFilter (
         }
         
         sqlite3_finalize(stmt)
-        
+        }
     }
     
     public func query(sql: String, params:[Any?]) throws -> [(partition: String, keyspace: String, id: String, value: Data?)] {
@@ -466,8 +496,14 @@ CREATE TABLE IF NOT EXISTS DataFilter (
     
     public func put<T>(partition: String, key: String, keyspace: String, ttl: Int, filter: [String:String]?, _ object: T) -> Bool where T : Decodable, T : Encodable {
         
-        if let jsonObject = try? JSONEncoder().encode(object) {
-            let id = makeId(key)
+        guard let jsonObject = try? JSONEncoder().encode(object) else { return false }
+        let id = makeId(key)
+        // Hold the connection lock across the entire write so the data row
+        // and its DataFilter rows are updated together. Without this an
+        // interleaving thread could observe partial filter state for a row
+        // it's reading. (Mutex is recursive — `execute` re-acquires safely.)
+        var success = false
+        lock.mutex {
             do {
                 if config.aes256encryptionKey == nil {
                     var model: String? = nil
@@ -495,6 +531,7 @@ CREATE TABLE IF NOT EXISTS DataFilter (
                             try execute(sql: "INSERT INTO DataFilter (partition, keyspace, id, filter_hash) VALUES (?,?,?,?);", params: [partition, keyspace, id, hash])
                         }
                     }
+                    success = true
                 } else {
                     // this data is to be stored encrypted
                     if let encKey = config.aes256encryptionKey {
@@ -529,18 +566,35 @@ CREATE TABLE IF NOT EXISTS DataFilter (
                                     try execute(sql: "INSERT INTO DataFilter (partition, keyspace, id, filter_hash) VALUES (?,?,?,?);", params: [partition, keyspace, id, hash])
                                 }
                             }
+                            success = true
                         } catch {
                             print("encryption error: \(error)")
                         }
                     }
                 }
-                
-                return true
             } catch {
-                return false
+                success = false
             }
         }
-        return false
+        return success
+    }
+
+    public func performTransaction(_ closure: () -> Void) -> Bool {
+        // Take the provider's lock so the closure (and its BEGIN/COMMIT
+        // bookends) execute serially against any other thread touching this
+        // connection. Mutex is recursive: nested calls into this provider
+        // from within `closure` re-enter without deadlocking.
+        var ok = false
+        lock.mutex {
+            guard transact(.begin) else { return }
+            closure()
+            if transact(.commit) {
+                ok = true
+            } else {
+                _ = transact(.rollback)
+            }
+        }
+        return ok
     }
     
     public func delete(partition: String, key: String, keyspace: String) -> Bool {
@@ -713,7 +767,9 @@ CREATE TABLE IF NOT EXISTS DataFilter (
             if v != nil {
                 
                 if let s = v! as? String {
-                    sqlite3_bind_text(stmt,paramCount,s,Int32(s.count),SQLITE_TRANSIENT)
+                    // Pass -1 so SQLite uses strlen() — `s.count` is the
+                    // grapheme count and would truncate non-ASCII strings.
+                    sqlite3_bind_text(stmt,paramCount,s,-1,SQLITE_TRANSIENT)
                 } else if let u = v! as? UUID {
                     sqlite3_bind_blob(stmt, paramCount, u.asData().bytes, Int32(u.asData().bytes.count), SQLITE_TRANSIENT)
                 } else if let b = v! as? Data {
@@ -728,7 +784,7 @@ CREATE TABLE IF NOT EXISTS DataFilter (
                     sqlite3_bind_int64(stmt, paramCount, i)
                 } else {
                     let s = "\(v!)"
-                    sqlite3_bind_text(stmt, paramCount, s,Int32(s.count) , SQLITE_TRANSIENT)
+                    sqlite3_bind_text(stmt, paramCount, s, -1, SQLITE_TRANSIENT)
                 }
                 
             } else {

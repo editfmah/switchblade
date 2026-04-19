@@ -21,68 +21,51 @@
 //    SOFTWARE.
 
 import Foundation
-import Dispatch
 
-public class Mutex {
-    
-    private var thread: Thread? = nil;
-    private var lock: DispatchQueue
-    
+/// A recursive mutex with a stable, race-free public API.
+///
+/// Backed by `NSRecursiveLock`, which is safe to acquire repeatedly from the
+/// same thread without deadlocking. This replaces an earlier implementation
+/// that read a shared `Thread?` field outside of any synchronization (a data
+/// race that could cause two threads to enter the critical section
+/// concurrently — observed as `SQLITE_MISUSE` when used to guard a SQLite
+/// connection).
+public final class Mutex {
+
+    private let lock = NSRecursiveLock()
+
     public init() {
-        lock = DispatchQueue(label: UUID().uuidString.lowercased())
+        // Aid debugging in stack traces / Instruments.
+        lock.name = "Switchblade.Mutex.\(UUID().uuidString.lowercased())"
     }
-    
-    public func mutex(_ closure:() -> Void) {
-        if thread != Thread.current {
-            lock.sync {
-                thread = Thread.current
-                closure()
-                thread = nil
-            }
-        } else {
-            closure()
-        }
+
+    @inline(__always)
+    public func mutex(_ closure: () -> Void) {
+        lock.lock()
+        defer { lock.unlock() }
+        closure()
     }
-    
-    public func throwingMutex(_ closure:(() throws -> Void)) throws {
-        if thread != Thread.current {
-            try lock.sync {
-                thread = Thread.current
-                try closure()
-                thread = nil
-            }
-        } else {
-            try closure()
-        }
+
+    @inline(__always)
+    public func throwingMutex(_ closure: () throws -> Void) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        try closure()
     }
-    
-    public func mutex<T>(_ closure:() -> T?) -> T? {
-        if thread != Thread.current {
-            var retValue: T? = nil
-            lock.sync {
-                thread = Thread.current
-                retValue = closure()
-                thread = nil
-            }
-            return retValue
-        } else {
-            return closure()
-        }
+
+    @inline(__always)
+    public func mutex<T>(_ closure: () -> T?) -> T? {
+        lock.lock()
+        defer { lock.unlock() }
+        return closure()
     }
-    
-    public func throwingMutex<T>(_ closure:() throws -> T?) throws -> T? {
-        if thread != Thread.current {
-            var retValue: T? = nil
-            try lock.sync {
-                thread = Thread.current
-                retValue = try closure()
-                thread = nil
-            }
-            return retValue
-        } else {
-            return try closure()
-        }
+
+    @inline(__always)
+    public func throwingMutex<T>(_ closure: () throws -> T?) throws -> T? {
+        lock.lock()
+        defer { lock.unlock() }
+        return try closure()
     }
-    
+
 }
 

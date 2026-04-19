@@ -10,12 +10,13 @@ import Foundation
 extension Switchblade: Atomic {
     
     @discardableResult public func perform(_ closure: () -> ()) -> AtomicPostAction {
-        lock.mutex {
-            provider.transact(.begin)
-            closure()
-            provider.transact(.commit)
-        }
-        return AtomicPostAction(self, true)
+        // Delegate to the provider so the entire BEGIN / closure / COMMIT
+        // sequence executes under the provider's own serialization lock.
+        // Locking `Switchblade.lock` here would not prevent other threads
+        // from hitting the underlying SQLite connection between BEGIN and
+        // COMMIT (which produced SQLITE_MISUSE under load).
+        let success = provider.performTransaction(closure)
+        return AtomicPostAction(self, success)
     }
     
     public func failTransaction() {

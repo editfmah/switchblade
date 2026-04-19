@@ -28,3 +28,21 @@ public protocol DataProvider {
     var blade: Switchblade! { get set }
     
 }
+
+public extension DataProvider {
+    /// Run `closure` such that, where the underlying provider supports it, all
+    /// data operations performed by `closure` execute atomically as a single
+    /// transaction and are serialized against any other concurrent provider
+    /// operations.
+    ///
+    /// The default implementation simply runs the closure (suitable for
+    /// providers that do not support transactional semantics, such as the
+    /// shard provider — transactions cannot span shards). Concrete providers
+    /// backed by a single SQLite connection should override this to take
+    /// their internal lock and wrap `closure` in BEGIN/COMMIT.
+    @discardableResult
+    func performTransaction(_ closure: () -> Void) -> Bool {
+        closure()
+        return true
+    }
+}
