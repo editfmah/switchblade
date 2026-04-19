@@ -51,10 +51,10 @@ public class SQLiteProvider: DataProvider {
         // process is mid-write.
         sqlite3_busy_timeout(db, 5000)
 
-        // WAL improves read/write concurrency. Best-effort — ignore errors so
-        // we still function on filesystems that do not support WAL.
-        sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nil, nil, nil)
-        sqlite3_exec(db, "PRAGMA synchronous=NORMAL;", nil, nil, nil)
+        // Use DELETE journal mode (default) since all operations are serialized
+        // through Mutex, making WAL's concurrency benefits unnecessary.
+        sqlite3_exec(db, "PRAGMA journal_mode=DELETE;", nil, nil, nil)
+        sqlite3_exec(db, "PRAGMA synchronous=FULL;", nil, nil, nil)
 
         // tables
         _ = try self.execute(sql: """
