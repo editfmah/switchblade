@@ -41,43 +41,47 @@ extension Switchblade : SwitchbadeBinder {
     
     // notifiers
     internal func notify(key: PrimaryKeyType, keyspace: String) {
-        // cleanup
-        bindings.removeAll(where: { $0.value == nil })
-        
-        // filter
-        bindings.forEach({
-            if let weakBinding = ($0.value as? SwitchbladeBinding), weakBinding.key?.key() == key.key() && weakBinding.keyspace == keyspace {
-                // we have a hit
-                weakBinding.notify()
-            }
-        })
-        
+        let keyBindings = matchingBindings { binding in
+            binding.key?.key() == key.key() && binding.keyspace == keyspace
+        }
+        keyBindings.forEach { $0.notify() }
+
         // now notify the keyspace
         notify(keyspace: keyspace)
-        
     }
     
     internal func notify(keyspace: String) {
-        // cleanup
-        bindings.removeAll(where: { $0.value == nil })
-        
-        // filter
-        bindings.forEach({
-            if let weakBinding = ($0.value as? SwitchbladeBinding),weakBinding.key == nil && weakBinding.keyspace == keyspace {
-                // we have a hit
-                weakBinding.notify()
-            }
-        })
+        let keyspaceBindings = matchingBindings { binding in
+            binding.key == nil && binding.keyspace == keyspace
+        }
+        keyspaceBindings.forEach { $0.notify() }
     }
     
     internal func registerBinding(_ binding: AnyObject) {
         if let _ = binding as? SwitchbladeBinding {
-            bindings.append(WeakContainer(binding))
+            lock.mutex {
+                bindings.append(WeakContainer(binding))
+            }
         }
     }
     
     internal func deregisterBinding(_ binding: SwitchbladeBinding) {
-        bindings.removeAll(where: { $0.id == binding.id })
+        lock.mutex {
+            bindings.removeAll(where: { $0.id == binding.id })
+        }
+    }
+
+    private func matchingBindings(_ predicate: (SwitchbladeBinding) -> Bool) -> [SwitchbladeBinding] {
+        var matches: [SwitchbladeBinding] = []
+        lock.mutex {
+            bindings.removeAll(where: { $0.value == nil })
+            for container in bindings {
+                if let binding = container.value as? SwitchbladeBinding, predicate(binding) {
+                    matches.append(binding)
+                }
+            }
+        }
+        return matches
     }
     
 }

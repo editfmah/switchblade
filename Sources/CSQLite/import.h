@@ -1,7 +1,3 @@
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__linux__)
 #import <sqlite3.h>
-#endif
-
-#ifdef __linux__
-#import "/usr/include/sqlite3.h"
 #endif

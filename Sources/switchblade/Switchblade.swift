@@ -8,6 +8,7 @@ public final class Switchblade: SwitchbladeInterface, @unchecked Sendable {
     var provider: DataProvider
     var config: SwitchbladeConfig = SwitchbladeConfig()
     
+    private static let defaultProviderLock = Mutex()
     static var defaultProvider: DataProvider?
     
     // binding registrations
@@ -15,9 +16,7 @@ public final class Switchblade: SwitchbladeInterface, @unchecked Sendable {
     
     public required init(provider: DataProvider, configuration: SwitchbladeConfig? = nil) throws {
         self.provider = provider
-        if Switchblade.defaultProvider == nil {
-            Switchblade.defaultProvider = provider
-        }
+        Switchblade.registerDefaultProviderIfNeeded(provider)
         
         if let config = configuration {
             self.config = config
@@ -35,9 +34,7 @@ public final class Switchblade: SwitchbladeInterface, @unchecked Sendable {
     
     public required init(provider: DataProvider, configuration: SwitchbladeConfig? = nil, completion: ((Bool, DataProvider, DatabaseError?) -> Void)?) {
         self.provider = provider
-        if Switchblade.defaultProvider == nil {
-            Switchblade.defaultProvider = provider
-        }
+        Switchblade.registerDefaultProviderIfNeeded(provider)
         
         if let config = configuration {
             self.config = config
@@ -50,7 +47,6 @@ public final class Switchblade: SwitchbladeInterface, @unchecked Sendable {
         
         // now, open the connection
         do {
-            try self.provider.open()
             try self.provider.open()
             completion?(true, provider, nil)
         } catch DatabaseError.Init(let e) {
@@ -79,6 +75,16 @@ public final class Switchblade: SwitchbladeInterface, @unchecked Sendable {
         return provider
     }
  
+}
+
+private extension Switchblade {
+    static func registerDefaultProviderIfNeeded(_ provider: DataProvider) {
+        defaultProviderLock.mutex {
+            if defaultProvider == nil {
+                defaultProvider = provider
+            }
+        }
+    }
 }
 
 public enum SwitchbladeLogDriverLogType {
@@ -138,4 +144,3 @@ internal extension Switchblade {
         }
     }
 }
-

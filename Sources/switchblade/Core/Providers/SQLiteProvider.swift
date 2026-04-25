@@ -24,6 +24,8 @@ public class SQLiteProvider: DataProvider {
     public var config: SwitchbladeConfig!
     public weak var blade: Switchblade!
     fileprivate var lock = Mutex()
+    private let cleanupQueue = DispatchQueue(label: "Switchblade.SQLiteProvider.Cleanup")
+    private var cleanupTimer: DispatchSourceTimer?
     
     var db: OpaquePointer?
     private var p: String?
@@ -34,30 +36,34 @@ public class SQLiteProvider: DataProvider {
     }
     
     public func open() throws {
-        
-        // Open the connection in serialized (full-mutex) mode. Even though
-        // every call into the provider is guarded by `lock`, FULLMUTEX gives
-        // SQLite-level protection against accidental cross-thread use of
-        // statement handles or background callbacks.
-        let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
-        let rc = sqlite3_open_v2(p!, &db, flags, nil)
-        if rc != SQLITE_OK || db == nil {
-            if db != nil { sqlite3_close(db); db = nil }
-            throw DatabaseError.Init(.UnableToCreateLocalDatabase)
-        }
+        try lock.throwingMutex {
+            if db != nil {
+                return
+            }
 
-        // Wait up to 5 seconds for the database to become available rather
-        // than immediately returning SQLITE_BUSY when another connection or
-        // process is mid-write.
-        sqlite3_busy_timeout(db, 5000)
+            // Open the connection in serialized (full-mutex) mode. Even though
+            // every call into the provider is guarded by `lock`, FULLMUTEX gives
+            // SQLite-level protection against accidental cross-thread use of
+            // statement handles or background callbacks.
+            let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
+            let rc = sqlite3_open_v2(p!, &db, flags, nil)
+            if rc != SQLITE_OK || db == nil {
+                if db != nil { sqlite3_close_v2(db); db = nil }
+                throw DatabaseError.Init(.UnableToCreateLocalDatabase)
+            }
 
-        // Use DELETE journal mode (default) since all operations are serialized
-        // through Mutex, making WAL's concurrency benefits unnecessary.
-        sqlite3_exec(db, "PRAGMA journal_mode=DELETE;", nil, nil, nil)
-        sqlite3_exec(db, "PRAGMA synchronous=FULL;", nil, nil, nil)
+            // Wait up to 5 seconds for the database to become available rather
+            // than immediately returning SQLITE_BUSY when another connection or
+            // process is mid-write.
+            sqlite3_busy_timeout(db, 5000)
 
-        // tables
-        _ = try self.execute(sql: """
+            // Use DELETE journal mode (default) since all operations are serialized
+            // through Mutex, making WAL's concurrency benefits unnecessary.
+            sqlite3_exec(db, "PRAGMA journal_mode=DELETE;", nil, nil, nil)
+            sqlite3_exec(db, "PRAGMA synchronous=FULL;", nil, nil, nil)
+
+            // tables
+            _ = try self.execute(sql: """
 CREATE TABLE IF NOT EXISTS Data (
     partition TEXT,
     keyspace TEXT,
@@ -71,13 +77,13 @@ CREATE TABLE IF NOT EXISTS Data (
     PRIMARY KEY (partition,keyspace,id)
 );
 """, params: [])
-        
-        // indexes
-        _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_ttl ON Data (ttl);", params: [])
-        _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_schema ON Data (model,version);", params: [])
 
-        // normalized filter index table
-        _ = try self.execute(sql: """
+            // indexes
+            _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_ttl ON Data (ttl);", params: [])
+            _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_schema ON Data (model,version);", params: [])
+
+            // normalized filter index table
+            _ = try self.execute(sql: """
 CREATE TABLE IF NOT EXISTS DataFilter (
     partition TEXT NOT NULL,
     keyspace TEXT NOT NULL,
@@ -86,40 +92,62 @@ CREATE TABLE IF NOT EXISTS DataFilter (
     PRIMARY KEY (partition, keyspace, id, filter_hash)
 );
 """, params: [])
-        _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_filter_lookup ON DataFilter (partition, keyspace, filter_hash);", params: [])
+            _ = try self.execute(sql: "CREATE INDEX IF NOT EXISTS idx_filter_lookup ON DataFilter (partition, keyspace, filter_hash);", params: [])
 
-        // backfill DataFilter from existing Data rows if needed
-        let filterCount = self.query(sql: "SELECT COUNT(*) FROM DataFilter", parameters: [])
-        let dataFilterCount = (filterCount.first?.first as? Int) ?? 0
-        if dataFilterCount == 0 {
-            let rows = self.query(sql: "SELECT partition, keyspace, id, filter FROM Data WHERE filter IS NOT NULL AND filter != ''", parameters: [])
-            for row in rows {
-                if let partition = row[0] as? String, let keyspace = row[1] as? String, let id = row[2] as? String, let filterStr = row[3] as? String {
-                    let hashes = filterStr.split(separator: ",").map(String.init)
-                    for hash in hashes {
-                        try self.execute(sql: "INSERT OR IGNORE INTO DataFilter (partition, keyspace, id, filter_hash) VALUES (?,?,?,?);", params: [partition, keyspace, id, hash])
+            // backfill DataFilter from existing Data rows if needed
+            let filterCount = self.query(sql: "SELECT COUNT(*) FROM DataFilter", parameters: [])
+            let dataFilterCount = (filterCount.first?.first as? Int) ?? 0
+            if dataFilterCount == 0 {
+                let rows = self.query(sql: "SELECT partition, keyspace, id, filter FROM Data WHERE filter IS NOT NULL AND filter != ''", parameters: [])
+                for row in rows {
+                    if let partition = row[0] as? String, let keyspace = row[1] as? String, let id = row[2] as? String, let filterStr = row[3] as? String {
+                        let hashes = filterStr.split(separator: ",").map(String.init)
+                        for hash in hashes {
+                            try self.execute(sql: "INSERT OR IGNORE INTO DataFilter (partition, keyspace, id, filter_hash) VALUES (?,?,?,?);", params: [partition, keyspace, id, hash])
+                        }
                     }
                 }
             }
-        }
 
-        DispatchQueue.global(qos: .default).asyncAfter(deadline: .now() + 60, execute: {
-            while self.db != nil {
-                // only clean up data that is over two hours old. This is to allow offline nodes to replay changes when they come back online
-                try? self.execute(sql: "DELETE FROM Data WHERE ttl IS NOT NULL AND ttl < ?;", params: [ttl_now - (7200)])
-                try? self.execute(sql: "DELETE FROM DataFilter WHERE NOT EXISTS (SELECT 1 FROM Data WHERE Data.partition = DataFilter.partition AND Data.keyspace = DataFilter.keyspace AND Data.id = DataFilter.id);", params: [])
-                Thread.sleep(forTimeInterval: 60)
-            }
-        })
-        
+            startCleanupTimerLocked()
+        }
     }
     
     public func close() throws {
         lock.mutex {
+            stopCleanupTimerLocked()
             if db != nil {
-                sqlite3_close(db)
+                sqlite3_close_v2(db)
                 db = nil
             }
+        }
+    }
+
+    private func startCleanupTimerLocked() {
+        if cleanupTimer != nil {
+            return
+        }
+        let timer = DispatchSource.makeTimerSource(queue: cleanupQueue)
+        timer.schedule(deadline: .now() + .seconds(60), repeating: .seconds(60))
+        timer.setEventHandler { [weak self] in
+            self?.runCleanupPass()
+        }
+        cleanupTimer = timer
+        timer.activate()
+    }
+
+    private func stopCleanupTimerLocked() {
+        cleanupTimer?.cancel()
+        cleanupTimer = nil
+    }
+
+    private func runCleanupPass() {
+        lock.mutex {
+            guard db != nil else { return }
+            // only clean up data that is over two hours old. This is to allow
+            // offline nodes to replay changes when they come back online.
+            try? self.execute(sql: "DELETE FROM Data WHERE ttl IS NOT NULL AND ttl < ?;", params: [ttl_now - (7200)])
+            try? self.execute(sql: "DELETE FROM DataFilter WHERE NOT EXISTS (SELECT 1 FROM Data WHERE Data.partition = DataFilter.partition AND Data.keyspace = DataFilter.keyspace AND Data.id = DataFilter.id);", params: [])
         }
     }
     
