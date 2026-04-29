@@ -1,3 +1,0 @@
-public protocol SwitchbadePutter: Sendable {
-    // Protocol requirements here
-}
